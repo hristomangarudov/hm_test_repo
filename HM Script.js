@@ -728,7 +728,7 @@ function freeSpinUserChecker(transactions) {
 async function handleKeyPress(event) {
     const loader = showLoader();
     if (event.shiftKey && event.keyCode === 48) { // Shift + 0 for filtering data
-        makeBTN();
+        alert("Test")
     } else if (event.shiftKey && event.keyCode === 57) { // Shift + 9 for minigames calculator
         const { startDt, toDt } = selectInputDatesByName();
         const currentUserID = selectUserID();
