@@ -20,7 +20,7 @@
     /* global Main */
     /* global EventEmitter */
     (function () {
-    //thias  sf sdf s
+    //thias  sf sdf sdfg
     const acceptWithdrawAcceptBtn = document.querySelector('div.content > div.actions > div.btn.accept[text_key="ACCEPT"]');
         console.log("Tunde")
     if (acceptWithdrawAcceptBtn) {
