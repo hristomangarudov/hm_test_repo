@@ -9,7 +9,7 @@
 // @grant        GM_addStyle
 // @grant        unsafeWindow
 // @grant        window.close
-// @updateURL    https://raw.githubusercontent.com/hristomangarudov/hm_test_repo/refs/heads/main/HM%20Script.meta.js
+// @updateURL    https://raw.githubusercontent.com/hristomangarudov/hm_test_repo/refs/heads/main/HM%20Script.js
 // @downloadURL  https://raw.githubusercontent.com/hristomangarudov/hm_test_repo/refs/heads/main/HM%20Script.js
 
 // ==/UserScript==
