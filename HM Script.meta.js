@@ -10,5 +10,5 @@
 // @grant        unsafeWindow
 // @grant        window.close
 // @downloadURL  https://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@raw.githubusercontent.com/hristomangarudov/hm_test_repo/main/HM%20Script
-// @updateURL    https://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@raw.githubusercontent.com/hristomangarudov/hm_test_repo/main/HM%20Script.js
+// @updateURL    https://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@raw.githubusercontent.com/hristomangarudov/hm_test_repo/refs/heads/main/HM%20Script.meta.js
 // ==/UserScript==
