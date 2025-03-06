@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HM Script2
 // @namespace    http://tampermonkey.net/HM-script2
-// @version      3.1
+// @version      3.1.1
 // @description  script made for filtering unique user IP matches also has minigames calculator. Shift + 0 is IP command, while Shift + 9 is for the minigames calc
 // @author       Hristo Mangarudov
 // @match        https://bo2.inplaynet.com/*
@@ -20,7 +20,6 @@
     /* global Main */
     /* global EventEmitter */
     (function () {
-    //thias  sf sdf sdfg
     const acceptWithdrawAcceptBtn = document.querySelector('div.content > div.actions > div.btn.accept[text_key="ACCEPT"]');
         console.log("Tunde")
     if (acceptWithdrawAcceptBtn) {
@@ -36,39 +35,10 @@
     let skipCurrentMonth = true; //IMPORTANT FOR POD
 
 
-    function parseDate(dateString) {
-        const regex = /(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/;
-        const match = dateString.match(regex);
-        if (match) {
-            const year = parseInt(match[1]);
-            const month = parseInt(match[2]) - 1;
-            const day = parseInt(match[3]);
-            const hours = parseInt(match[4]);
-            const minutes = parseInt(match[5]);
-            const seconds = parseInt(match[6]);
-            return new Date(year, month, day, hours, minutes, seconds);
-        }
-        return null;
-    }
-
     function selectUserID() {
         const spanElement = document.querySelector('.user-info > .user > span');
         return spanElement ? spanElement.textContent : "";
     }
-    function formatDate(date) {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-
-    return `${day}/${month}/${year}`;
-   }
-    function formatDateNoYYY(date) {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear(); // Get year
-
-    return `${day}/${month}`;
-   }
 
     function convertAndEncodeDate(dateStr) {
         if (!dateStr) return { encodedStandard: "", encodedCustom: "" };
@@ -339,153 +309,11 @@ function createHangmanModal() {
 }
 
 
-
-    function extractValuesWithDateAndCountFromTable(tableId) {
-        const valuesWithDateAndCount = {};
-
-        const table = document.getElementById(tableId);
-
-        if (table) {
-            const rows = table.querySelectorAll('tbody tr');
-
-            rows.forEach(function(row) {
-                const cells = row.querySelectorAll('td');
-
-                let id = null;
-                let ip = null;
-                for (let i = 0; i < cells.length; i++) {
-                    const anchor = cells[i].querySelector('a');
-                    if (anchor) {
-                        id = anchor.textContent.trim();
-                        break;
-                    }
-                }
-
-                let date = null;
-                for (let j = 0; j < cells.length; j++) {
-                    const potentialDate = parseDate(cells[j].textContent.trim());
-                    if (potentialDate) {
-                        date = potentialDate;
-                        break;
-                    }
-                }
-
-                if (cells[2]) {
-                    ip = cells[2].textContent.trim();
-                }
-
-                if (id && date && ip) {
-                    const timeDiff = Math.abs(date.getTime() - Date.now());
-
-                    if (!valuesWithDateAndCount[id]) {
-                        valuesWithDateAndCount[id] = {
-                            date: date,
-                            count: 1,
-                            ips: new Set(ip.split(',').map(s => s.trim())),
-                            timeDiff: timeDiff
-                        };
-                    } else {
-                        valuesWithDateAndCount[id].count++;
-                        ip.split(',').map(s => s.trim()).forEach(ip => valuesWithDateAndCount[id].ips.add(ip));
-                    }
-                }
-            });
-        } else {
-            console.error('Table not found');
-        }
-
-        return valuesWithDateAndCount;
-    }
-
-    function makeBTN() {
-        const container = document.getElementById("SysTrans");
-        const container2 = container.querySelector('tbody tr');
-        const sortBTN = document.createElement('button');
-        sortBTN.type = 'button';
-        sortBTN.innerHTML = 'Filter Data';
-        sortBTN.className = 'btn accept accept-items';
-        sortBTN.onclick = function() {
-            const valuesWithDateAndCount = extractValuesWithDateAndCountFromTable('SysTrans');
-
-            const modalOverlay = document.createElement('div');
-            modalOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 100000; display: flex; justify-content: center; align-items: center;';
-
-            const modalDialog = document.createElement('div');
-            modalDialog.style.cssText = 'background-color: #fff; border-radius: 5px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); max-width: 80%; max-height: 80%; overflow: auto;';
-
-            const modalContent = document.createElement('div');
-            modalContent.style.cssText = 'padding: 20px;';
-
-            const infoTable = document.createElement('table');
-            infoTable.style.cssText = 'border-collapse: collapse; width: 100%;';
-            const headerRow = infoTable.insertRow();
-            const headers = ['ID', 'Count', 'Date', 'IPs'];
-            headers.forEach(function(headerText) {
-                const headerCell = document.createElement('th');
-                headerCell.textContent = headerText;
-                headerRow.appendChild(headerCell);
-            });
-
-            const allIPs = [];
-            for (const id in valuesWithDateAndCount) {
-                valuesWithDateAndCount[id].ips.forEach(ip => allIPs.push(ip));
-            }
-            const ipCounts = {};
-            allIPs.forEach(ip => {
-                ipCounts[ip] = ipCounts[ip] ? ipCounts[ip] + 1 : 1;
-            });
-            let maxCount = 0;
-            for (const ip in ipCounts) {
-                maxCount = Math.max(maxCount, ipCounts[ip]);
-            }
-            const mostFrequentIPs = Object.keys(ipCounts).filter(ip => ipCounts[ip] === maxCount);
-
-            for (const id in valuesWithDateAndCount) {
-                const dataRow = infoTable.insertRow();
-                const rowData = [
-                    id,
-                    valuesWithDateAndCount[id].count,
-                    valuesWithDateAndCount[id].date.toISOString(),
-                    Array.from(valuesWithDateAndCount[id].ips).join(', ')
-                ];
-                rowData.forEach(function(cellData, index) {
-                    const cell = dataRow.insertCell();
-                    cell.textContent = cellData;
-                    cell.style.cssText = 'border: 1px solid #ddd; padding: 8px;';
-
-                    if (index === 3) {
-                        mostFrequentIPs.forEach(mostFrequentIP => {
-                            if (valuesWithDateAndCount[id].ips.has(mostFrequentIP)) {
-                                cell.innerHTML = cell.innerHTML.replace(new RegExp(mostFrequentIP, 'g'), '<span style="color: red;">' + mostFrequentIP + '</span>');
-                            }
-                        });
-                    }
-                });
-            }
-
-            modalContent.appendChild(infoTable);
-            modalDialog.appendChild(modalContent);
-            modalOverlay.appendChild(modalDialog);
-
-            modalOverlay.addEventListener('click', function(event) {
-                if (event.target === modalOverlay) {
-                    modalOverlay.remove();
-                }
-            });
-
-            document.body.appendChild(modalOverlay);
-        };
-        if (container) {
-            const items = container.querySelectorAll('tbody tr');
-            container2.append(sortBTN);
-        }
-    }
-
 function miniGamesCalc(data) {
     console.log(data);
 
     const gamesWithMultiplier = ["MiniGames[Type1]", "MiniGames[Type2]"];
-    const gamesWithoutMultiplier = ["MiniGames[Plinko]", "MiniGames[Frog]", "MiniGames[Keno 40]", "LambdaGaming[8BITPlinko]", "MiniGames[Penalty]"];
+    const gamesWithoutMultiplier = ["MiniGames[Plinko]", "MiniGames[Frog]", "MiniGames[Keno 40]", "LambdaGaming[8BITPlinko]", "MiniGames[Penalty]","MiniGames[Roulette]"];
 
     const modalOverlay = document.createElement('div');
     modalOverlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 100000; display: flex; justify-content: center; align-items: center;';
@@ -728,7 +556,7 @@ function freeSpinUserChecker(transactions) {
 async function handleKeyPress(event) {
     const loader = showLoader();
     if (event.shiftKey && event.keyCode === 48) { // Shift + 0 for filtering data
-        alert("Diddler")
+        console.log("Diddler")
     } else if (event.shiftKey && event.keyCode === 57) { // Shift + 9 for minigames calculator
         const { startDt, toDt } = selectInputDatesByName();
         const currentUserID = selectUserID();
@@ -832,6 +660,7 @@ function customTransactionFilter(transactions) {
     let oneMonthSum = 0;
     let sixMonthSum = 0;
     let isEUR = false;
+    let isUSD = false;
 
     let latestValidTransaction = { Noda: null, Payopp: null };
     const transactionsByMonth = {};
@@ -865,8 +694,9 @@ function customTransactionFilter(transactions) {
                 transactionTypesAll.add("Noda");
             }
 
-            if (transaction.localCurrencyCode === "EUR") {
+            if (transaction.localCurrencyCode === "EUR" || transaction.localCurrencyCode === "USD") {
                 isEUR = true;
+                isUSD = true;
             }
 
             if (transactionDate >= sixMonthsAgo && transactionDate <= today) {
@@ -921,8 +751,9 @@ function customTransactionFilter(transactions) {
                 transactionTypesAll.add("Noda");
             }
 
-            if (transaction.localCurrencyCode === "EUR") {
+            if (transaction.localCurrencyCode === "EUR" || transaction.localCurrencyCode === "USD") {
                 isEUR = true;
+                isUSD = true;
             }
 
             if (transactionDate >= sixMonthsAgo && transactionDate <= today) {
@@ -1013,9 +844,9 @@ const handlePodRequest = (transactionSet, sumCheck, typeString, latestTransactio
     const modalDialog = document.createElement('div');
     modalDialog.style.cssText = 'background-color: #fff; border-radius: 5px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); max-width: 50%; padding: 20px; display:flex; flex-direction: column ';
 
-    if (isEUR) {
+    if (isEUR || isUSD) {
         modalDialog.innerHTML = `
-            <h3>Nope. EUR. No PoD required for EUR transactions</h3>
+            <h3>Nope. EUR/USD. No PoD required for EUR/USD transactions</h3>
             <img src="https://media1.tenor.com/m/WUmceUdDbW4AAAAd/tom-and-jerry-slap.gif" alt="Transaction Summary" style="width: 100%; height: auto;">
         `;
     } else {
