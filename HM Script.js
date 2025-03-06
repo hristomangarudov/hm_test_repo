@@ -27,6 +27,10 @@
     acceptWithdrawAcceptBtn.style.zIndex = '2';
     acceptWithdrawAcceptBtn.style.left = '-100%';
     acceptWithdrawAcceptBtn.style.backgroundColor = 'black';
+    const currentFraudAgent = document.querySelector('div.desktop-header-full-name > div.name')
+    if(currentFraudAgent && currentFraudAgent.children[1].textContent == "FraudGJ" ){
+    acceptWithdrawAcceptBtn.style.display = "none"
+      }
     } else {
         console.log("cant find it");
     }
