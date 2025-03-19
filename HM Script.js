@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HM Script2
 // @namespace    http://tampermonkey.net/HM-script2
-// @version      3.2
+// @version      3.2.1
 // @description  script made for filtering unique user IP matches also has minigames calculator. Shift + 0 is IP command, while Shift + 9 is for the minigames calc
 // @author       Hristo Mangarudov
 // @match        https://bo2.inplaynet.com/*
@@ -702,13 +702,13 @@
   async function handleKeyPress(event) {
     if (functionalityChecker()) {
       const loader = showLoader();
-      if (event.shiftKey && event.keyCode === 48) {
+      const currentUserID = selectUserID();
+      if (event.shiftKey && event.keyCode === 48 && currentUserID) {
         console.log("Diddler");
         // Shift + 0 for filtering data
       } else if (event.shiftKey && event.keyCode === 57) {
         // Shift + 9 for minigames calculator
         const { startDt, toDt } = selectInputDatesByName();
-        const currentUserID = selectUserID();
         let totalPages = 1;
 
         const spanPageElement = document.querySelector(
@@ -744,7 +744,7 @@
             console.error("Error fetching transactions:", error);
           }
         } else {
-          alert("User ID not found.");
+          console.log("User ID not found.");
         }
       } else if (event.shiftKey && event.keyCode === 56) {
         // Shift + 8 for custom filtered transactions
@@ -774,9 +774,9 @@
             console.error("Error fetching transactions:", error);
           }
         } else {
-          alert("User ID not found.");
+          console.log("User ID not found.");
         }
-      } else if (event.shiftKey && event.keyCode === 55) {
+      } else if (event.shiftKey && event.keyCode === 55 && currentUserID) {
         // Shift + 7 for free spin user check
         const { startDt, toDt } = selectInputDatesByName();
         const currentUserID = selectUserID();
@@ -804,11 +804,10 @@
             console.error("Error fetching transactions:", error);
           }
         } else {
-          alert("User ID not found.");
+          console.log("User ID not found.");
         }
-      } else if (event.shiftKey && event.keyCode === 189) {
+      } else if (event.shiftKey && event.keyCode === 189 && currentUserID) {
         // Shift + NUM1 for Hangman game
-        console.log("asdasdasdasdasasd");
         createHangmanModal();
       }
       removeLoader(loader);
