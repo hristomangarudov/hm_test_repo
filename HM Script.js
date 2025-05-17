@@ -22,8 +22,11 @@
   (function () {
     const acceptWithdrawAcceptBtn = document.querySelector(
       'div.content > div.actions > div.btn.accept[text_key="ACCEPT"]'
-    );
-    console.log("Tunde");
+    )
+      ? document.querySelector(
+          'div.content > div.actions > div.btn.accept[text_key="ACCEPT"]'
+        )
+      : "";
     if (acceptWithdrawAcceptBtn) {
       acceptWithdrawAcceptBtn.style.position = "relative";
       acceptWithdrawAcceptBtn.style.zIndex = "2";
@@ -42,6 +45,167 @@
       console.log("cant find it");
     }
   })();
+  function getCurrentShiftRangeEncoded() {
+    const now = new Date();
+    const hour = now.getHours();
+
+    let start, end, shiftType;
+
+    if (hour >= 8 && hour < 20) {
+      shiftType = "day";
+      start = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        8,
+        0,
+        0
+      );
+      end = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        20,
+        0,
+        0
+      );
+    } else if (hour >= 20) {
+      shiftType = "night";
+      start = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        20,
+        0,
+        0
+      );
+      end = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1,
+        8,
+        0,
+        0
+      );
+    } else {
+      shiftType = "night";
+      start = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - 1,
+        20,
+        0,
+        0
+      );
+      end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
+    }
+
+    start.setHours(start.getHours() - 3);
+    end.setHours(end.getHours() - 3);
+
+    function formatDate(date) {
+      const pad = (num) => num.toString().padStart(2, "0");
+      return `${pad(date.getDate())}-${pad(
+        date.getMonth() + 1
+      )}-${date.getFullYear()} ${pad(date.getHours())}:${pad(
+        date.getMinutes()
+      )}`;
+    }
+
+    const fromStr = formatDate(start);
+    const toStr = formatDate(end);
+
+    const shiftDate = `${start.getFullYear()}-${String(
+      start.getMonth() + 1
+    ).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
+    const shiftId = `${shiftDate}_${shiftType}`;
+
+    return {
+      from: convertAndEncodeDate(fromStr),
+      to: convertAndEncodeDate(toStr),
+      shiftId,
+    };
+  }
+  async function fetchTransactionsForCurrentShift(admin = "FraudHM") {
+    const { from, to, shiftId } = getCurrentShiftRangeEncoded();
+    const lastShownShift = localStorage.getItem("lastShift250Triggered");
+
+    if (lastShownShift === shiftId) return;
+    const pageSize = 100;
+    let page = 1;
+    let allTransactions = [];
+
+    try {
+      let maxPages = 20;
+      while (page <= maxPages) {
+        const response = await fetch(
+          `https://bo2.inplaynet.com/api/Customer/GetSystemTransaction?CurrentPage=${page}&PageSize=${pageSize}&OrderColumn=transactionId&OrderDirection=desc&StartDate=${from.encodedStandard}&ToDate=${to.encodedStandard}&AdminName=${admin}&Brands%5B0%5D=1&Brands%5B1%5D=3&Brands%5B2%5D=5&Brands%5B3%5D=10&Brands%5B4%5D=12&Brands%5B5%5D=16&Brands%5B6%5D=17&Brands%5B7%5D=22&Brands%5B8%5D=23&Brands%5B9%5D=31&Brands%5B10%5D=35&Brands%5B11%5D=36&Brands%5B12%5D=40&Brands%5B13%5D=42&Brands%5B14%5D=43&Brands%5B15%5D=49&Brands%5B16%5D=50&Brands%5B17%5D=55&Brands%5B18%5D=59&Brands%5B19%5D=61&Brands%5B20%5D=68&Brands%5B21%5D=74&Brands%5B22%5D=75&Brands%5B23%5D=79&Brands%5B24%5D=80&Brands%5B25%5D=83&Brands%5B26%5D=84&Brands%5B27%5D=85&Brands%5B28%5D=86&Brands%5B29%5D=92&Brands%5B30%5D=93&Brands%5B31%5D=95&OperationTypes%5B0%5D=2`
+        );
+
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+
+        const data = await response.json();
+        const transactions = Array.isArray(data) ? data : data?.result || [];
+
+        if (!transactions.length) break;
+
+        allTransactions = allTransactions.concat(transactions);
+
+        if (transactions.length < pageSize) break;
+
+        page++;
+      }
+
+      checkShiftThresholdAndNotify(allTransactions, shiftId);
+      console.log(allTransactions);
+      return allTransactions;
+    } catch (error) {
+      console.error("Failed to fetch transactions:", error);
+      return [];
+    }
+  }
+  function checkShiftThresholdAndNotify(transactions, shiftId) {
+    const lastShownShift = localStorage.getItem("lastShift250Triggered");
+
+    if (lastShownShift === shiftId) return;
+
+    if (transactions.length >= 10) {
+      localStorage.setItem("lastShift250Triggered", shiftId);
+      showDeMotivationalModal();
+    }
+  }
+  function showDeMotivationalModal() {
+    const motivationalGifs = [
+      "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExbHFyc3o1cTNucTh3bXo1a3lqbzRheWRhejNnMDc0ZjB4NXB0bjJnNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/vX9WcCiWwUF7G/giphy.gif",
+      "https://i1.sndcdn.com/avatars-000623888460-ygj39m-t1080x1080.jpg",
+      "https://preview.redd.it/nm93snupy1i31.jpg?auto=webp&s=0c9751a8e9164d26931acf795bc2653754273ef9",
+    ];
+    const gifUrl =
+      motivationalGifs[Math.floor(Math.random() * motivationalGifs.length)];
+    const modal = document.createElement("div");
+    modal.style.position = "fixed";
+    modal.style.top = "0";
+    modal.style.left = "0";
+    modal.style.width = "100vw";
+    modal.style.height = "100vh";
+    modal.style.background = "rgba(0,0,0,0.7)";
+    modal.style.display = "flex";
+    modal.style.alignItems = "center";
+    modal.style.justifyContent = "center";
+    modal.style.zIndex = "999999";
+
+    modal.innerHTML = `
+    <div style="background:white; padding:30px; border-radius:10px; text-align:center;">
+      <h2 style="font-size:24px;">250+?Nqkoi prekalqva...</h2>
+      <img src="${gifUrl}" style="width:400px; maxHeight:400px;" />
+    </div>
+  `;
+
+    modal.addEventListener("click", () => modal.remove());
+    document.body.appendChild(modal);
+  }
 
   let skipCurrentMonth = true; //IMPORTANT FOR POD
 
@@ -88,345 +252,6 @@
     const convertedStartDt = convertAndEncodeDate(startDt);
     const convertedToDt = convertAndEncodeDate(toDt);
     return { startDt: convertedStartDt, toDt: convertedToDt };
-  }
-  function createHangmanModal() {
-    let words = [
-      "APPLE",
-      "BANANA",
-      "CHOCOLATE",
-      "DOG",
-      "ELEPHANT",
-      "FLAMINGO",
-      "GUITAR",
-      "HORIZON",
-      "ICEBERG",
-      "JUNGLE",
-      "KANGAROO",
-      "LIGHTHOUSE",
-      "MOUNTAIN",
-      "NOTEBOOK",
-      "OCTOPUS",
-      "PENGUIN",
-      "QUICKSAND",
-      "RAINBOW",
-      "SUNFLOWER",
-      "TELESCOPE",
-      "UMBRELLA",
-      "VOLCANO",
-      "WATERFALL",
-      "XYLOPHONE",
-      "YESTERDAY",
-      "ZEBRA",
-      "ADVENTURE",
-      "BUTTERFLY",
-      "CANDLE",
-      "DRAGONFLY",
-      "ECHO",
-      "FIREFLY",
-      "GALAXY",
-      "HAPPINESS",
-      "ISLAND",
-      "JOURNEY",
-      "KNOWLEDGE",
-      "LAUGHTER",
-      "MOONLIGHT",
-      "NEBULA",
-      "OCEAN",
-      "PARADISE",
-      "QUIET",
-      "RIVER",
-      "STARLIGHT",
-      "TRANQUIL",
-      "UNIVERSE",
-      "VOYAGE",
-      "WHISPER",
-      "ZEPHYR",
-      "BALLOON",
-      "CACTUS",
-      "DOLPHIN",
-      "EMERALD",
-      "FEATHER",
-      "GLACIER",
-      "HARBOR",
-      "INFINITY",
-      "JIGSAW",
-      "KOALA",
-      "LANTERN",
-      "MEADOW",
-      "NIGHTFALL",
-      "ORBIT",
-      "PAVILION",
-      "QUARTZ",
-      "REFLECTION",
-      "SYMPHONY",
-      "TORNADO",
-      "UPLIFT",
-      "VORTEX",
-      "WONDER",
-      "YONDER",
-      "ZENITH",
-      "ASTRONOMY",
-      "BLOSSOM",
-      "CANYON",
-      "DAYDREAM",
-      "ENCHANT",
-      "FOUNTAIN",
-      "GOSSAMER",
-      "HORIZON",
-      "ILLUMINATE",
-      "JUBILEE",
-      "KINDRED",
-      "LULLABY",
-      "MIRAGE",
-      "NECTAR",
-      "OBSIDIAN",
-      "PASSION",
-      "QUINTESSENCE",
-      "RADIANCE",
-      "SERENITY",
-      "TWILIGHT",
-      "UNITY",
-      "VIBRANT",
-      "WANDERLUST",
-      "XENON",
-      "YEARNING",
-      "ZEN",
-    ];
-
-    let word = words[Math.floor(Math.random() * words.length)];
-    let attemptsLimit = 6;
-    let attemptsLeft = attemptsLimit;
-    let guessedLetters = [];
-    let hintsUsed = 0;
-    let displayWord = "_ ".repeat(word.length).trim();
-
-    const hangmanStages = [
-      `
-   _______
-   |     |
-   |
-   |
-   |
-   |
- __|__
-`,
-      `
-   _______
-   |     |
-   |     O
-   |
-   |
-   |
- __|__
-`,
-      `
-   _______
-   |     |
-   |     O
-   |     |
-   |
-   |
- __|__
-`,
-      `
-   _______
-   |     |
-   |     O
-   |    /|
-   |
-   |
- __|__
-`,
-      `
-   _______
-   |     |
-   |     O
-   |    /|\\
-   |
-   |
- __|__
-`,
-      `
-   _______
-   |     |
-   |     O
-   |    /|\\
-   |    /
-   |
- __|__
-`,
-      `
-   _______
-   |     |
-   |     O
-   |    /|\\
-   |    / \\
-   |
- __|__
-`,
-    ];
-
-    const modalOverlay = document.createElement("div");
-    modalOverlay.style.cssText = `
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex; justify-content: center; align-items: center;
-    z-index: 10000;
-  `;
-
-    const modal = document.createElement("div");
-    modal.style.cssText = `
-    background: white; padding: 20px; width: 320px;
-    border-radius: 10px;
-    font-family: monospace;
-    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
-    display:flex; align-items:center; justify-content:center; flex-direction:column; flex-wrap:wrap;
-  `;
-
-    modal.innerHTML = `
-    <h2>Hangman Game</h2>
-    <pre id="hangman-figure">${hangmanStages[0]}</pre>>
-    <p id="word-display">${displayWord}</p>
-    <p>Attempts left: <span id="attempts-left">${attemptsLeft}</span></p>
-    <div>
-    <div id="hang-container">
-    <input id="guess-input" type="text" maxlength="1" placeholder="Enter a letter" />
-    <div id="hang-button-container">
-    <button id="submit-guess">Submit</button>
-    <button id="hint-button">Hint</button>
-    <button id="reset-game">Reset</button>
-    </div>
-    </div>
-    <div>
-    <p id="result-message"></p>
-    <div>
-    </div>
-  `;
-
-    modalOverlay.appendChild(modal);
-    document.body.appendChild(modalOverlay);
-
-    let hangContainer = document.getElementById("hang-container");
-    let hangButtonContainer = document.getElementById("hang-button-container");
-    hangContainer.style.cssText = `
-  display: flex;
-  flex-direction:column;
-  align-items:center;
-  `;
-    hangButtonContainer.style.cssText = `
-  display: flex;
-  gap:5px;
-  `;
-    const wordDisplayElement = document.getElementById("word-display");
-    const attemptsLeftElement = document.getElementById("attempts-left");
-    const hangmanFigureElement = document.getElementById("hangman-figure");
-    const resultMessageElement = document.getElementById("result-message");
-    const guessInputElement = document.getElementById("guess-input");
-    const submitGuessButton = document.getElementById("submit-guess");
-    const resetGameButton = document.getElementById("reset-game");
-    const hintButton = document.getElementById("hint-button");
-    hintButton.className = "btn accept accept-items";
-    submitGuessButton.className = "btn accept accept-items";
-    resetGameButton.className = "btn accept accept-items";
-
-    function updateUI() {
-      wordDisplayElement.textContent = displayWord;
-      attemptsLeftElement.textContent = attemptsLeft;
-      hangmanFigureElement.textContent =
-        hangmanStages[attemptsLimit - attemptsLeft];
-
-      if (!displayWord.includes("_")) {
-        resultMessageElement.textContent = "🎉 Congratulations, you won!";
-        disableGame();
-      } else if (attemptsLeft === 0) {
-        resultMessageElement.textContent = `💀 Game over! The word was: ${word}`;
-        disableGame();
-      }
-    }
-
-    function disableGame() {
-      guessInputElement.disabled = true;
-      submitGuessButton.disabled = true;
-      hintButton.disabled = true;
-    }
-
-    submitGuessButton.addEventListener("click", () => {
-      const guess = guessInputElement.value.toUpperCase();
-      guessInputElement.value = "";
-
-      if (guess.length !== 1 || guessedLetters.includes(guess)) {
-        resultMessageElement.textContent = "Invalid guess or already guessed!";
-        return;
-      }
-
-      guessedLetters.push(guess);
-
-      if (word.includes(guess)) {
-        displayWord = word
-          .split("")
-          .map((letter, index) =>
-            guessedLetters.includes(letter) ? letter : "_"
-          )
-          .join(" ");
-      } else {
-        attemptsLeft -= 1;
-      }
-
-      updateUI();
-    });
-
-    hintButton.addEventListener("click", () => {
-      if (hintsUsed < 1) {
-        hintButton.disabled = true;
-        let newDisplayWord = displayWord.split(" ");
-        let unrevealedIndexes = [];
-
-        word.split("").forEach((letter, index) => {
-          if (!guessedLetters.includes(letter)) {
-            unrevealedIndexes.push(index);
-          }
-        });
-
-        if (unrevealedIndexes.length > 0) {
-          let randomIndex =
-            unrevealedIndexes[
-              Math.floor(Math.random() * unrevealedIndexes.length)
-            ];
-          guessedLetters.push(word[randomIndex]);
-          newDisplayWord[randomIndex] = word[randomIndex];
-        }
-
-        displayWord = newDisplayWord.join(" ");
-        hintsUsed++;
-        updateUI();
-      } else {
-        resultMessageElement.textContent = "You've already used your hint!";
-      }
-    });
-
-    resetGameButton.addEventListener("click", () => {
-      guessInputElement.disabled = false;
-      submitGuessButton.disabled = false;
-      hintButton.disabled = false;
-      resultMessageElement.textContent = "";
-      word = words[Math.floor(Math.random() * words.length)];
-      attemptsLeft = attemptsLimit;
-      guessedLetters = [];
-      displayWord = "_ ".repeat(word.length).trim();
-      hintsUsed = 0;
-      updateUI();
-    });
-
-    function closeModal(event) {
-      if (!modal.contains(event.target)) {
-        modalOverlay.remove();
-        document.removeEventListener("click", closeModal);
-      }
-    }
-    document.addEventListener("click", closeModal);
-
-    updateUI();
   }
 
   function miniGamesCalc(data) {
@@ -701,13 +526,23 @@
 
   async function handleKeyPress(event) {
     if (functionalityChecker()) {
+      const currentAdmin = document.querySelector(
+        "div.desktop-header-full-name > div.name"
+      )
+        ? document.querySelectorAll(
+            "div.desktop-header-full-name > div.name >span"
+          )[1]?.textContent
+        : "FraudHM";
+      console.log(currentAdmin);
       const loader = showLoader();
       const currentUserID = selectUserID();
       if (event.shiftKey && event.keyCode === 48 && currentUserID) {
-        console.log("Diddler");
-        // Shift + 0 for filtering data
+        alert("Diddler");
       } else if (event.shiftKey && event.keyCode === 57) {
         // Shift + 9 for minigames calculator
+        const transactions = await fetchTransactionsForCurrentShift(
+          currentAdmin
+        );
         const { startDt, toDt } = selectInputDatesByName();
         let totalPages = 1;
 
@@ -748,6 +583,9 @@
         }
       } else if (event.shiftKey && event.keyCode === 56) {
         // Shift + 8 for custom filtered transactions
+        const transactions = await fetchTransactionsForCurrentShift(
+          currentAdmin
+        );
         const { startDt, toDt } = selectInputDatesByName();
         const currentUserID = selectUserID();
         let totalPages = 1;
@@ -807,8 +645,6 @@
           console.log("User ID not found.");
         }
       } else if (event.shiftKey && event.keyCode === 189 && currentUserID) {
-        // Shift + NUM1 for Hangman game
-        createHangmanModal();
       }
       removeLoader(loader);
     }
