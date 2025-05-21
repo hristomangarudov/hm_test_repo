@@ -20,6 +20,7 @@
   /* global Main */
   /* global EventEmitter */
   (function () {
+    console.log("Diddler")
     const acceptWithdrawAcceptBtn = document.querySelector(
       'div.content > div.actions > div.btn.accept[text_key="ACCEPT"]'
     )
