@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HM Script2
 // @namespace    http://tampermonkey.net/HM-script2
-// @version      3.2.8
+// @version      3.2.9
 // @description  script made for filtering unique user IP matches also has minigames calculator. Shift + 0 is IP command, while Shift + 9 is for the minigames calc
 // @author       Hristo Mangarudov
 // @match        https://bo2.inplaynet.com/*
@@ -128,9 +128,9 @@
     };
   }
   async function fetchTransactionsForCurrentShift(admin) {
-    if (admin != "FraudHM") {
-      return;
-    }
+    // if (admin != "FraudHM") {
+    //   return;
+    // }
     const { from, to, shiftId } = getCurrentShiftRangeEncoded();
     const lastShownShift = localStorage.getItem("lastShift250Triggered");
 
