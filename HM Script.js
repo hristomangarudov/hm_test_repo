@@ -166,6 +166,8 @@ if (!seniors.includes(admin)) {
         );
 
         if (!response.ok) {
+          const lastShownShift = localStorage.getItem("lastShift250Triggered");
+          localStorage.setItem("lastShift250Triggered", shiftId);
           throw new Error("Network response was not ok");
         }
 
