@@ -143,22 +143,10 @@ return
       while (page <= maxPages) {
         const response = await fetch(
           `https://bo2.inplaynet.com/api/Customer/GetSystemTransaction?CurrentPage=${page}&PageSize=${pageSize}&OrderColumn=transactionId&OrderDirection=desc&StartDate=${from.encodedStandard}&ToDate=${to.encodedStandard}&AdminName=${admin}&Brands%5B0%5D=1&Brands%5B1%5D=3&Brands%5B2%5D=5&Brands%5B3%5D=10&Brands%5B4%5D=12&Brands%5B5%5D=16&Brands%5B6%5D=17&Brands%5B7%5D=22&Brands%5B8%5D=23&Brands%5B9%5D=31&Brands%5B10%5D=35&Brands%5B11%5D=36&Brands%5B12%5D=40&Brands%5B13%5D=42&Brands%5B14%5D=43&Brands%5B15%5D=49&Brands%5B16%5D=50&Brands%5B17%5D=55&Brands%5B18%5D=59&Brands%5B19%5D=61&Brands%5B20%5D=68&Brands%5B21%5D=74&Brands%5B22%5D=75&Brands%5B23%5D=79&Brands%5B24%5D=80&Brands%5B25%5D=83&Brands%5B26%5D=84&Brands%5B27%5D=85&Brands%5B28%5D=86&Brands%5B29%5D=92&Brands%5B30%5D=93&Brands%5B31%5D=95&OperationTypes%5B0%5D=2`,
-{
-  method: 'GET',
-  headers: {
-    'Accept': '*/*',
-    'Accept-Encoding': 'gzip, deflate, br, zstd',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Sec-Fetch-Dest': 'empty',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'same-origin',
-    'X-Requested-With': 'XMLHttpRequest'
-  },
-  referrer: 'https://bo2.inplaynet.com/html/systemTransaction/systemTransaction.html',
-  referrerPolicy: 'strict-origin-when-cross-origin',
-  mode: 'cors',
-  credentials: 'include'
-}
+          {
+            method: "GET",
+            credentials: "include",
+          }
         );
 
         if (!response.ok) {
