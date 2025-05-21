@@ -245,6 +245,11 @@
       "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExbHFyc3o1cTNucTh3bXo1a3lqbzRheWRhejNnMDc0ZjB4NXB0bjJnNyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/vX9WcCiWwUF7G/giphy.gif",
       "https://i1.sndcdn.com/avatars-000623888460-ygj39m-t1080x1080.jpg",
       "https://preview.redd.it/nm93snupy1i31.jpg?auto=webp&s=0c9751a8e9164d26931acf795bc2653754273ef9",
+      "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExeTFyNmV1NTM4empmNmE4dTh5MHg3NTRkZXAydzYyYWg0aDFlZjV2eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/F3BeiZNq6VbDwyxzxF/giphy.gif",
+      "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeTBrcTE2ZTZibHlmMm44Nm14anEwZWIyZWxkem5henBvb2I3Yzc1YiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/relnvfSEa2Qa125uPA/giphy.gif",
+      "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExcWd2c3V1ZWIyZDd1d3djNHF5NHRyeGZwb3RidHR3MnZpc2U5ZjNseSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ToMjGpx9F5ktZw8qPUQ/giphy.gif",
+      "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExbjBhMDV3cGIybzJmc2FzcWRkd2c3dGF0NTZrazF3ZTd2ZDV4aTk5cSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l4Ki2obCyAQS5WhFe/giphy.gif",
+      "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExa2Y2cGRhd3Y2bnZtbmpiOWpqZDNvbGU1Mm1scndoNnd4MHhwdzd4byZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l3q2K5jinAlChoCLS/giphy.gif",
     ];
     const gifUrl =
       motivationalGifs[Math.floor(Math.random() * motivationalGifs.length)];
