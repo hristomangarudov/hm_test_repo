@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HM Script2
 // @namespace    http://tampermonkey.net/HM-script2
-// @version      3.3.0
+// @version      3.3.1
 // @description  script made for filtering unique user IP matches also has minigames calculator. Shift + 0 is IP command, while Shift + 9 is for the minigames calc
 // @author       Hristo Mangarudov
 // @match        https://bo2.inplaynet.com/*
@@ -20,7 +20,7 @@
   /* global Main */
   /* global EventEmitter */
   (function () {
-    console.log("Diddler")
+    console.log("Diddler");
     const acceptWithdrawAcceptBtn = document.querySelector(
       'div.content > div.actions > div.btn.accept[text_key="ACCEPT"]'
     )
@@ -128,15 +128,32 @@
     };
   }
   async function fetchTransactionsForCurrentShift(admin) {
-const seniors = ["FraudHM", "FraudkvBG", "FraudPB", "FraudMT", "FraudBGaa"];
+    const seniors = ["FraudHM", "FraudkvBG", "FraudPB", "FraudMT", "FraudBGaa"];
 
-// if (!seniors.includes(admin)) {
-//   return;
-// }
-if(admin != "FraudHM"){
-  return
-}
+    if (!seniors.includes(admin)) {
+      return;
+    }
+    // if (admin != "FraudHM") {
+    //   return;
+    // }
+    const defaultInterval = 4 * 60 * 60 * 1000; // 4 hours
+    const fastInterval = 1 * 60 * 60 * 1000; // 1 hour
+
     const { from, to, shiftId } = getCurrentShiftRangeEncoded();
+    cleanupOldShiftTracking(shiftId);
+    const lastCheckKey = `lastShiftCheckTime_${shiftId}`;
+    const intervalKey = `shiftCheckInterval_${shiftId}`;
+
+    const lastCheck = parseInt(localStorage.getItem(lastCheckKey) || "0");
+    const interval = parseInt(
+      localStorage.getItem(intervalKey) || defaultInterval.toString()
+    );
+    const now = Date.now();
+
+    if (now - lastCheck < interval) {
+      console.log("Too soon to run again");
+      return;
+    }
     const lastShownShift = localStorage.getItem("lastShift250Triggered");
 
     if (lastShownShift === shiftId) return;
@@ -188,6 +205,13 @@ if(admin != "FraudHM"){
 
       checkShiftThresholdAndNotify(allTransactions, shiftId);
       console.log(allTransactions);
+      localStorage.setItem(lastCheckKey, Date.now().toString());
+
+      if (allTransactions.length >= 200) {
+        localStorage.setItem(intervalKey, fastInterval.toString());
+      } else {
+        localStorage.setItem(intervalKey, defaultInterval.toString());
+      }
       return allTransactions;
     } catch (error) {
       console.error("Failed to fetch transactions:", error);
@@ -199,9 +223,21 @@ if(admin != "FraudHM"){
 
     if (lastShownShift === shiftId) return;
 
-    if (transactions.length >= 10) {
+    if (transactions.length > 250) {
       localStorage.setItem("lastShift250Triggered", shiftId);
       showDeMotivationalModal();
+    }
+  }
+  function cleanupOldShiftTracking(currentShiftId) {
+    for (let key in localStorage) {
+      if (
+        key.startsWith("lastShiftCheckTime_") ||
+        key.startsWith("shiftCheckInterval_")
+      ) {
+        if (!key.includes(currentShiftId)) {
+          localStorage.removeItem(key);
+        }
+      }
     }
   }
   function showDeMotivationalModal() {
