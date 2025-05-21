@@ -130,8 +130,11 @@
   async function fetchTransactionsForCurrentShift(admin) {
 const seniors = ["FraudHM", "FraudkvBG", "FraudPB", "FraudMT", "FraudBGaa"];
 
-if (!seniors.includes(admin)) {
-  return;
+// if (!seniors.includes(admin)) {
+//   return;
+// }
+if(admin != "FraudHM"){
+  return
 }
     const { from, to, shiftId } = getCurrentShiftRangeEncoded();
     const lastShownShift = localStorage.getItem("lastShift250Triggered");
