@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HM_FraudScript
 // @namespace    http://tampermonkey.net/HM-script2
-// @version      1.0.0
+// @version      1.0.1
 // @description  PoD Script
 // @author       Hristo Mangarudov
 // @match        https://bo2.inplaynet.com/html/users/userpage*
