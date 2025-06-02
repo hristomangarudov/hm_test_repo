@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HM_FraudScript
 // @namespace    http://tampermonkey.net/HM-script2
-// @version      1.0.1
+// @version      1.0.2
 // @description  PoD Script
 // @author       Hristo Mangarudov
 // @match        https://bo2.inplaynet.com/html/users/userpage*
@@ -17,6 +17,7 @@
   "use strict";
   let skipCurrentMonth = true; //IMPORTANT FOR POD
   console.log("Test")
+let test = 223
   function selectUserID() {
     const spanElement = document.querySelector(".user-info > .user > span");
     return spanElement ? spanElement.textContent : "";
