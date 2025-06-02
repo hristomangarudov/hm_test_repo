@@ -1,0 +1,490 @@
+// ==UserScript==
+// @name         HM_FraudScript
+// @namespace    http://tampermonkey.net/HM-script2
+// @version      1.0.0
+// @description  PoD Script
+// @author       Hristo Mangarudov
+// @match        https://bo2.inplaynet.com/html/users/userpage*
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=upgaming.com
+// @grant        GM_addStyle
+// @grant        unsafeWindow
+// @grant        window.close
+// ==/UserScript==
+
+(function () {
+  "use strict";
+  let skipCurrentMonth = true; //IMPORTANT FOR POD
+  function selectUserID() {
+    const spanElement = document.querySelector(".user-info > .user > span");
+    return spanElement ? spanElement.textContent : "";
+  }
+  function showLoader() {
+    const loader = document.createElement("div");
+    loader.innerHTML = '<p style="color: red;"><b>Checking...</b></p>';
+    loader.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(255, 255, 255, 1);
+        border: 1px solid #f00;
+        padding: 20px;
+        z-index: 100001;
+    `;
+    document.body.appendChild(loader);
+    return loader;
+  }
+  function removeLoader(loader) {
+    if (loader && loader.parentNode) {
+      loader.parentNode.removeChild(loader);
+    }
+  }
+  async function handleKeyPress(event) {
+    if (window.location.hash === "#transactions") {
+      console.log("Navigated to #transactions – script running!");
+      const loader = showLoader();
+      const currentUserID = selectUserID();
+      if (event.shiftKey && event.keyCode === 48 && currentUserID) {
+        alert("Test");
+      } else if (event.shiftKey && event.keyCode === 56) {
+        // Shift + 8 for custom filtered transactions
+        const currentUserID = selectUserID();
+        let totalPages = 1;
+
+        const spanPageElement = document.querySelector(
+          "tfoot.pagination tr td > div.wrapper > ul.nums > li:last-child > span"
+        );
+        if (spanPageElement) {
+          totalPages = parseInt(spanPageElement.textContent, 10);
+          console.log("Total pages:", totalPages);
+        }
+
+        if (currentUserID) {
+          try {
+            const { transactions } = await fetchAllTransactions2(
+              currentUserID,
+              totalPages
+            );
+
+            customTransactionFilter(transactions);
+          } catch (error) {
+            console.error("Error fetching transactions:", error);
+          }
+        } else {
+          console.log("User ID not found.");
+        }
+      }
+      removeLoader(loader);
+    }
+  }
+  async function fetchAllTransactions2(userID, totalPages) {
+    let allTransactions = [];
+    let totalBetAmount = 0;
+    let totalDepositAmount = 0;
+    let totalWithdrawalAmount = 0;
+
+    for (let page = 1; page <= totalPages; page++) {
+      const response = await fetch(
+        `https://bo2.inplaynet.com/api/customer/searchcustomertransactions?UserProfileId=${userID}&CurrentPage=${page}&PageSize=500&TransactionId=&TransactionGuid=&GameId=&TransactionStartDt=&TransactionToDt=&AmountFrom=&AmountTo=&RequiresManualConfirmation=&GameOperationOnly=1&StartDate=&ToDate=&SearchCurrency=`
+      );
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const data = await response.json();
+      allTransactions = allTransactions.concat(data.transactions);
+
+      data.transactions.forEach((transaction) => {
+        if (transaction.operationTypeName === "Bet") {
+          totalBetAmount += transaction.localAmount;
+        } else if (transaction.operationTypeName === "Deposit") {
+          totalDepositAmount += transaction.localAmount;
+        } else if (transaction.operationTypeName === "Withdrawal") {
+          totalWithdrawalAmount += transaction.localAmount;
+        }
+      });
+    }
+
+    return {
+      transactions: allTransactions,
+      totalBetAmount: totalBetAmount,
+      totalDepositAmount: totalDepositAmount,
+      totalWithdrawalAmount: totalWithdrawalAmount,
+    };
+  }
+  function customTransactionFilter(transactions) {
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    const previousDates = new Date();
+    previousDates.setHours(0, 0, 0, 0);
+    today.setHours(23, 59, 59, 0);
+
+    const threeMonthsAgo = new Date(previousDates);
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const oneMonthsAgo = new Date(previousDates);
+    oneMonthsAgo.setMonth(oneMonthsAgo.getMonth() - 1);
+    const sixMonthsAgo = new Date(previousDates);
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    let totalSum = 0;
+    let threeMonthSum = 0;
+    let oneMonthSum = 0;
+    let sixMonthSum = 0;
+    let isEUR = false;
+    let isUSD = false;
+
+    let latestValidTransaction = { Noda: null, Payopp: null };
+    const transactionsByMonth = {};
+
+    const transactionTypesAll = new Set();
+    const transactionTypesSixMonths = new Set();
+    const transactionTypesThreeMonths = new Set();
+    const transactionTypesOneMonth = new Set();
+
+    transactions.forEach((transaction) => {
+      const transactionDate = new Date(transaction.orderDate);
+      const transactionMonth = transactionDate.getMonth();
+      const transactionYear = transactionDate.getFullYear();
+
+      if (skipCurrentMonth) {
+        if (
+          (transaction.accountName.includes("Payop") ||
+            transaction.accountName.includes("Noda")) &&
+          transaction.operationTypeName !== "Withdraw"
+        ) {
+          totalSum += transaction.localAmount;
+
+          const monthKey = `${transactionYear}-${transactionMonth}`;
+          if (!transactionsByMonth[monthKey])
+            transactionsByMonth[monthKey] = { Noda: 0, Payopp: 0 };
+
+          if (transaction.accountName.includes("Payop")) {
+            transactionsByMonth[monthKey].Payopp++;
+            transactionTypesAll.add("Payop");
+          }
+          if (transaction.accountName.includes("Noda")) {
+            transactionsByMonth[monthKey].Noda++;
+            transactionTypesAll.add("Noda");
+          }
+
+          if (
+            transaction.localCurrencyCode === "EUR" ||
+            transaction.localCurrencyCode === "USD"
+          ) {
+            isEUR = true;
+            isUSD = true;
+          }
+
+          if (transactionDate >= sixMonthsAgo && transactionDate <= today) {
+            sixMonthSum += transaction.localAmount;
+            if (transaction.accountName.includes("Payop"))
+              transactionTypesSixMonths.add("Payop");
+            if (transaction.accountName.includes("Noda"))
+              transactionTypesSixMonths.add("Noda");
+          }
+
+          if (transactionDate >= threeMonthsAgo && transactionDate <= today) {
+            threeMonthSum += transaction.localAmount;
+            if (transaction.accountName.includes("Payop"))
+              transactionTypesThreeMonths.add("Payop");
+            if (transaction.accountName.includes("Noda"))
+              transactionTypesThreeMonths.add("Noda");
+          }
+
+          if (transactionDate >= oneMonthsAgo && transactionDate <= today) {
+            oneMonthSum += transaction.localAmount;
+            if (transaction.accountName.includes("Payop"))
+              transactionTypesOneMonth.add("Payop");
+            if (transaction.accountName.includes("Noda"))
+              transactionTypesOneMonth.add("Noda");
+          }
+          if (
+            skipCurrentMonth &&
+            transactionMonth === currentMonth &&
+            transactionYear === currentYear
+          ) {
+            return;
+          }
+
+          if (
+            transaction.accountName.includes("Payop") &&
+            (!latestValidTransaction.Payopp ||
+              transactionDate > latestValidTransaction.Payopp)
+          ) {
+            latestValidTransaction.Payopp = transactionDate;
+          }
+          if (
+            transaction.accountName.includes("Noda") &&
+            (!latestValidTransaction.Noda ||
+              transactionDate > latestValidTransaction.Noda)
+          ) {
+            latestValidTransaction.Noda = transactionDate;
+          }
+        }
+      } else {
+        if (
+          skipCurrentMonth &&
+          transactionMonth === currentMonth &&
+          transactionYear === currentYear
+        ) {
+          return;
+        }
+        if (
+          (transaction.accountName.includes("Payop") ||
+            transaction.accountName.includes("Noda")) &&
+          transaction.operationTypeName !== "Withdraw"
+        ) {
+          totalSum += transaction.localAmount;
+
+          const monthKey = `${transactionYear}-${transactionMonth}`;
+          if (!transactionsByMonth[monthKey])
+            transactionsByMonth[monthKey] = { Noda: 0, Payopp: 0 };
+
+          if (transaction.accountName.includes("Payop")) {
+            transactionsByMonth[monthKey].Payopp++;
+            transactionTypesAll.add("Payop");
+          }
+          if (transaction.accountName.includes("Noda")) {
+            transactionsByMonth[monthKey].Noda++;
+            transactionTypesAll.add("Noda");
+          }
+
+          if (
+            transaction.localCurrencyCode === "EUR" ||
+            transaction.localCurrencyCode === "USD"
+          ) {
+            isEUR = true;
+            isUSD = true;
+          }
+
+          if (transactionDate >= sixMonthsAgo && transactionDate <= today) {
+            sixMonthSum += transaction.localAmount;
+            if (transaction.accountName.includes("Payop"))
+              transactionTypesSixMonths.add("Payop");
+            if (transaction.accountName.includes("Noda"))
+              transactionTypesSixMonths.add("Noda");
+          }
+
+          if (transactionDate >= threeMonthsAgo && transactionDate <= today) {
+            threeMonthSum += transaction.localAmount;
+            if (transaction.accountName.includes("Payop"))
+              transactionTypesThreeMonths.add("Payop");
+            if (transaction.accountName.includes("Noda"))
+              transactionTypesThreeMonths.add("Noda");
+          }
+
+          if (transactionDate >= oneMonthsAgo && transactionDate <= today) {
+            oneMonthSum += transaction.localAmount;
+            if (transaction.accountName.includes("Payop"))
+              transactionTypesOneMonth.add("Payop");
+            if (transaction.accountName.includes("Noda"))
+              transactionTypesOneMonth.add("Noda");
+          }
+
+          if (
+            transaction.accountName.includes("Payop") &&
+            (!latestValidTransaction.Payopp ||
+              transactionDate > latestValidTransaction.Payopp)
+          ) {
+            latestValidTransaction.Payopp = transactionDate;
+          }
+          if (
+            transaction.accountName.includes("Noda") &&
+            (!latestValidTransaction.Noda ||
+              transactionDate > latestValidTransaction.Noda)
+          ) {
+            latestValidTransaction.Noda = transactionDate;
+          }
+        }
+      }
+    });
+
+    const getMonthName = (date) =>
+      date.toLocaleString("default", { month: "long" });
+
+    const handlePodRequest = (
+      transactionSet,
+      sumCheck,
+      typeString,
+      latestTransaction
+    ) => {
+      if (latestTransaction) {
+        if (latestTransaction) {
+          const transactionMonthKey = `${latestTransaction.getFullYear()}-${latestTransaction.getMonth()}`;
+          const monthName = getMonthName(latestTransaction);
+          const transactionsInMonth = transactionsByMonth[transactionMonthKey];
+
+          if (transactionsInMonth) {
+            let transactionTypes = [];
+            let transactionCount = 0;
+            let transactionNoda = 0;
+            let transactionPayopp = 0;
+
+            if (transactionsInMonth.Noda > 0) {
+              transactionCount += transactionsInMonth.Noda;
+              transactionNoda += transactionsInMonth.Noda;
+              transactionTypes.push("Noda");
+            }
+
+            if (transactionsInMonth.Payopp > 0) {
+              transactionCount += transactionsInMonth.Payopp;
+              transactionPayopp += transactionsInMonth.Payopp;
+              transactionTypes.push("Payopp");
+            }
+            const sixMonthsAgo = new Date();
+            sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+            if (latestTransaction < sixMonthsAgo) {
+              return `<pre>
+PoD requested for ${monthName} (${transactionTypes.join(" and ")})
+Count: ${transactionCount} (N: ${transactionNoda} | P: ${transactionPayopp})
+<span style="color: red;">
+Note: Latest transaction is older than 6 months.
+Please consider consulting with your TL regarding this PoD request.
+Latest Transaction: ${latestTransaction.toLocaleString()}
+</span>
+</pre>`;
+            }
+
+            return `<pre>
+PoD requested for ${monthName} (${transactionTypes.join(" and ")})
+Count: ${transactionCount} (N: ${transactionNoda} | P: ${transactionPayopp})
+Latest Transaction: ${latestTransaction.toLocaleString()}
+</pre>`;
+          }
+        }
+      }
+      if (sumCheck >= 10000) {
+        return `<pre>
+<span style="color: red;">
+Most likely all transcations were made in current month.
+Please consider consulting with TL if PoD is needed, and consider clicking "Include current month button"
+</span>
+</pre>`;
+      }
+      return "";
+    };
+
+    let podRequestText = "";
+
+    const latestTransaction =
+      latestValidTransaction.Noda && latestValidTransaction.Payopp
+        ? latestValidTransaction.Noda > latestValidTransaction.Payopp
+          ? latestValidTransaction.Noda
+          : latestValidTransaction.Payopp
+        : latestValidTransaction.Noda || latestValidTransaction.Payopp;
+
+    if (sixMonthSum >= 10000 && threeMonthSum > 0 && oneMonthSum > 0) {
+      podRequestText = handlePodRequest(
+        transactionTypesOneMonth,
+        oneMonthSum,
+        Array.from(transactionTypesOneMonth).join(" and "),
+        latestTransaction
+      );
+    } else if (sixMonthSum >= 10000 && threeMonthSum > 0 && oneMonthSum === 0) {
+      podRequestText = handlePodRequest(
+        transactionTypesThreeMonths,
+        threeMonthSum,
+        Array.from(transactionTypesThreeMonths).join(" and "),
+        latestTransaction
+      );
+    } else if (sixMonthSum >= 10000 && threeMonthSum === 0) {
+      podRequestText = handlePodRequest(
+        transactionTypesSixMonths,
+        sixMonthSum,
+        Array.from(transactionTypesSixMonths).join(" and "),
+        latestTransaction
+      );
+    }
+
+    const modalOverlay = document.createElement("div");
+    modalOverlay.className = "modal-overlay";
+    modalOverlay.style.cssText =
+      "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 100000; display: flex; justify-content: center; align-items: center;";
+
+    const modalDialog = document.createElement("div");
+    modalDialog.style.cssText =
+      "background-color: #fff; border-radius: 5px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); max-width: 50%; padding: 20px; display:flex; flex-direction: column ";
+
+    if (isEUR || isUSD) {
+      modalDialog.innerHTML = `
+            <h3>EUR/USD transactions.PoD is not required for EUR/USD transactions</h3>
+            <img src="https://media1.tenor.com/m/WUmceUdDbW4AAAAd/tom-and-jerry-slap.gif" alt="Transaction Summary" style="width: 100%; height: auto;">
+        `;
+    } else {
+      modalDialog.innerHTML = `
+            <button type="button" id="ignoreCurrentMonthBtn" class="btn accept accept-items" display="block" onClick="changeMonthSkip()">${
+              skipCurrentMonth ? "Include Current Month" : "Skip Current Month"
+            }</button>
+            <h3>Transaction Summary</h3>
+            <p>Total Sum of All Filtered Transactions: <b>${totalSum.toFixed(
+              2
+            )}</b> (${Array.from(transactionTypesAll).join(" and ")})</p>
+            <p>Total Sum of All Filtered Transactions in the <b>last 6 Months: ${sixMonthSum.toFixed(
+              2
+            )}</b> (${Array.from(transactionTypesSixMonths).join(" and ")})</p>
+            <p>Total Sum of All Filtered Transactions in the <b>last 3 Months: ${threeMonthSum.toFixed(
+              2
+            )}</b> (${Array.from(transactionTypesThreeMonths).join(
+        " and "
+      )})</p>
+            <p>Total Sum of All Filtered Transactions in the <b>last Month: ${oneMonthSum.toFixed(
+              2
+            )}</b> (${Array.from(transactionTypesOneMonth).join(" and ")})</p>
+            <hr>
+            <p><strong>${podRequestText}</strong></p>
+        `;
+      const button = modalDialog.querySelector("#ignoreCurrentMonthBtn");
+      button.addEventListener("click", changeMonthSkip);
+    }
+
+    modalOverlay.appendChild(modalDialog);
+
+    modalOverlay.addEventListener("click", function (event) {
+      if (event.target === modalOverlay) {
+        modalOverlay.remove();
+      }
+    });
+
+    function changeMonthSkip() {
+      const existingOverlays = document.querySelectorAll(".modal-overlay");
+      existingOverlays.forEach((overlay) => overlay.remove());
+      skipCurrentMonth = !skipCurrentMonth;
+      console.log(`skipCurrentMonth is now: ${skipCurrentMonth}`);
+      runChangeMonthSkipLogic();
+    }
+
+    async function runChangeMonthSkipLogic() {
+      const loader = showLoader();
+      try {
+        const currentUserID = selectUserID();
+        let totalPages = 1;
+
+        const spanPageElement = document.querySelector(
+          "tfoot.pagination tr td > div.wrapper > ul.nums > li:last-child > span"
+        );
+        if (spanPageElement) {
+          totalPages = parseInt(spanPageElement.textContent, 10);
+          console.log("Total pages:", totalPages);
+        }
+
+        if (currentUserID) {
+          const { transactions } = await fetchAllTransactions2(
+            currentUserID,
+            totalPages
+          );
+          customTransactionFilter(transactions);
+        } else {
+          alert("User ID not found.");
+        }
+      } catch (error) {
+        console.error("Error in runChangeMonthSkipLogic:", error);
+      }
+      removeLoader(loader);
+    }
+    document.body.appendChild(modalOverlay);
+  }
+
+  document.addEventListener("keydown", handleKeyPress);
+})();
