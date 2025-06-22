@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HM Script2
 // @namespace    http://tampermonkey.net/HM-script2
-// @version      3.3.4
+// @version      3.3.5
 // @description  script made for filtering unique user IP matches also has minigames calculator. Shift + 0 is IP command, while Shift + 9 is for the minigames calc
 // @author       Hristo Mangarudov
 // @match        https://bo2.inplaynet.com/*
@@ -48,6 +48,7 @@
   })();
   (function () {
     const commentParent = document.querySelector(".comment");
+
     if (!commentParent) {
       console.error(
         "Parent element with selector '.comment' not found. Cannot append checkboxes."
@@ -66,12 +67,11 @@
 
     const checkboxesTitle = document.createElement("h3");
     checkboxesTitle.textContent = "Select Winnings Categories:";
-    checkboxesTitle.className = "text-xl font-semibold text-gray-800 mb-4"; // Margin below title
+    checkboxesTitle.className = "text-xl font-semibold text-gray-800 mb-4";
     checkboxSectionWrapper.appendChild(checkboxesTitle);
 
     const checkboxesContainer = document.createElement("div");
     checkboxesContainer.id = "dynamic-checkboxes-wrapper";
-
     checkboxesContainer.className =
       "flex flex-wrap gap-x-4 gap-y-2 items-center justify-start";
     checkboxesContainer.style.display = "flex";
@@ -111,6 +111,15 @@
       commentTextArea.value = commentText;
     }
 
+    function resetCheckboxesAndComment() {
+      const checkboxes = checkboxesContainer.querySelectorAll(
+        'input[type="checkbox"]'
+      );
+      checkboxes.forEach((checkbox) => {
+        checkbox.checked = false;
+      });
+    }
+
     gameCategories.forEach((category) => {
       const div = document.createElement("div");
       div.className = "flex items-center";
@@ -139,6 +148,52 @@
     });
 
     updateComment();
+
+    const transactionInfoOverlay = document.querySelector(
+      ".overlay.transaction-info"
+    );
+
+    if (transactionInfoOverlay) {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (
+            mutation.type === "attributes" &&
+            mutation.attributeName === "class"
+          ) {
+            const isVisible =
+              transactionInfoOverlay.classList.contains("visible");
+            const wasVisible =
+              mutation.oldValue && mutation.oldValue.includes("visible");
+
+            if (isVisible && !wasVisible) {
+              console.log(
+                "Overlay became visible (via class change), resetting checkboxes and comment."
+              );
+              resetCheckboxesAndComment();
+            }
+          }
+        });
+      });
+
+      observer.observe(transactionInfoOverlay, {
+        attributes: true,
+        attributeFilter: ["class"],
+        attributeOldValue: true,
+      });
+
+      const initialIsVisible =
+        transactionInfoOverlay.classList.contains("visible");
+      if (initialIsVisible) {
+        console.log(
+          "Overlay initially visible (via class check), resetting checkboxes and comment."
+        );
+        resetCheckboxesAndComment();
+      }
+    } else {
+      console.warn(
+        "Element with class '.overlay.transaction-info' not found. Reset functionality will not be active."
+      );
+    }
   })();
   function getCurrentShiftRangeEncoded() {
     const now = new Date();
