@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HM Script2
 // @namespace    http://tampermonkey.net/HM-script2
-// @version      3.3.2
+// @version      3.3.4
 // @description  script made for filtering unique user IP matches also has minigames calculator. Shift + 0 is IP command, while Shift + 9 is for the minigames calc
 // @author       Hristo Mangarudov
 // @match        https://bo2.inplaynet.com/*
@@ -45,6 +45,100 @@
     } else {
       console.log("cant find it");
     }
+  })();
+  (function () {
+    const commentParent = document.querySelector(".comment");
+    if (!commentParent) {
+      console.error(
+        "Parent element with selector '.comment' not found. Cannot append checkboxes."
+      );
+      return;
+    }
+
+    const commentTextArea = commentParent.querySelector("textarea");
+    if (!commentTextArea) {
+      console.error("Textarea not found inside '.comment' element.");
+      return;
+    }
+
+    const checkboxSectionWrapper = document.createElement("div");
+    checkboxSectionWrapper.className = "mb-6";
+
+    const checkboxesTitle = document.createElement("h3");
+    checkboxesTitle.textContent = "Select Winnings Categories:";
+    checkboxesTitle.className = "text-xl font-semibold text-gray-800 mb-4"; // Margin below title
+    checkboxSectionWrapper.appendChild(checkboxesTitle);
+
+    const checkboxesContainer = document.createElement("div");
+    checkboxesContainer.id = "dynamic-checkboxes-wrapper";
+
+    checkboxesContainer.className =
+      "flex flex-wrap gap-x-4 gap-y-2 items-center justify-start";
+    checkboxesContainer.style.display = "flex";
+    checkboxSectionWrapper.appendChild(checkboxesContainer);
+
+    commentParent.insertBefore(checkboxSectionWrapper, commentTextArea);
+
+    const gameCategories = ["Minigames", "Slots", "Live Casino", "Sportsbook"];
+
+    function updateComment() {
+      const selectedCategories = [];
+      const checkboxes = checkboxesContainer.querySelectorAll(
+        'input[type="checkbox"]'
+      );
+
+      checkboxes.forEach((checkbox) => {
+        if (checkbox.checked) {
+          selectedCategories.push(checkbox.value);
+        }
+      });
+
+      let commentText = "";
+      if (selectedCategories.length === 0) {
+        commentText = "";
+      } else if (selectedCategories.length === 1) {
+        commentText = `winnings from ${selectedCategories[0].toLowerCase()}`;
+      } else if (selectedCategories.length === 2) {
+        commentText = `winnings from ${selectedCategories[0].toLowerCase()} and ${selectedCategories[1].toLowerCase()}`;
+      } else {
+        const lastCategory = selectedCategories.pop();
+        const formattedCategories = selectedCategories
+          .map((cat) => cat.toLowerCase())
+          .join(", ");
+        commentText = `winnings from ${formattedCategories} and ${lastCategory.toLowerCase()}`;
+      }
+
+      commentTextArea.value = commentText;
+    }
+
+    gameCategories.forEach((category) => {
+      const div = document.createElement("div");
+      div.className = "flex items-center";
+      div.style.display = "flex";
+      div.style.alignItems = "center";
+      div.style.gap = "10px";
+      div.style.margin = "10px";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.id = `checkbox-${category.replace(/\s+/g, "-").toLowerCase()}`;
+      checkbox.value = category;
+      checkbox.className =
+        "h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mr-2";
+
+      checkbox.addEventListener("change", updateComment);
+
+      const label = document.createElement("label");
+      label.htmlFor = checkbox.id;
+      label.textContent = category;
+      label.className = "text-gray-700 text-base font-medium cursor-pointer";
+
+      div.appendChild(checkbox);
+      div.appendChild(label);
+      checkboxesContainer.appendChild(div);
+    });
+
+    updateComment();
   })();
   function getCurrentShiftRangeEncoded() {
     const now = new Date();
@@ -596,7 +690,384 @@
     };
     document.addEventListener("click", closeModal);
   }
+  async function CopyCards() {
+    console.log("coppied");
+    const currentDate = new Date();
+    var userdataid = document.querySelector(
+      "body > main > div.content-wrapper > div.user-info > div.user > span"
+    ).innerText;
+    const fssdatas = await fetch(
+      "https://bo2.inplaynet.com/api/customer/GetCardPan?UserProfileId=" +
+        userdataid
+    );
+    const fssdata = await fssdatas.json();
+    const cards = fssdata
+      .filter((item) => item.cardStatus === 3)
+      .filter((item) => {
+        const createDateMax = new Date(item.createDateMax);
+        const sixMonthsAgo = new Date(currentDate);
+        sixMonthsAgo.setMonth(currentDate.getMonth() - 6);
+        return createDateMax >= sixMonthsAgo;
+      })
+      .map((item) => item.cardPan);
+    const result = `All Used CreditCard Verification is Requested. ${cards.join(
+      ", "
+    )}`;
+    var input = document.createElement("textarea");
+    input.innerHTML = result;
+    document.body.appendChild(input);
+    input.select();
+    var fresult = document.execCommand("copy");
+    document.body.removeChild(input);
+    return fresult;
+  }
+  async function ipchecker() {
+    function applyStyles(element, styles) {
+      for (const property in styles) {
+        element.style[property] = styles[property];
+      }
+    }
 
+    const modal = document.createElement("div");
+    modal.id = "ipCheckerModal";
+    applyStyles(modal, {
+      display: "none",
+      position: "fixed",
+      zIndex: "1000",
+      left: "0",
+      top: "0",
+      width: "100%",
+      height: "100%",
+      overflow: "auto",
+      backgroundColor: "rgba(0,0,0,0.6)",
+      paddingTop: "60px",
+      animation: "fadeIn 0.3s ease-out",
+    });
+
+    const modalContent = document.createElement("div");
+    applyStyles(modalContent, {
+      backgroundColor: "#ffffff",
+      margin: "5% auto",
+      padding: "30px",
+      borderRadius: "8px",
+      boxShadow: "0 10px 30px rgba(0,0,0,0.25), 0 6px 10px rgba(0,0,0,0.1)",
+      width: "90%",
+      maxWidth: "1000px",
+      animation: "slideInTop 0.4s ease-out",
+    });
+
+    const closeBtn = document.createElement("span");
+    closeBtn.innerHTML = "&times;";
+    closeBtn.className = "close-button";
+    applyStyles(closeBtn, {
+      color: "#aaaaaa",
+      float: "right",
+      fontSize: "32px",
+      fontWeight: "bold",
+      cursor: "pointer",
+      transition: "color 0.3s ease",
+    });
+
+    // Function to close the modal and clean up listeners
+    const closeModal = () => {
+      modal.style.display = "none";
+      document.body.style.overflow = "";
+      modal.remove(); // Remove the modal from the DOM
+      document.removeEventListener("keydown", handleEscapeKey); // Remove escape key listener
+    };
+
+    closeBtn.onclick = closeModal;
+    closeBtn.onmouseover = () => (closeBtn.style.color = "#333333");
+    closeBtn.onmouseout = () => (closeBtn.style.color = "#aaaaaa");
+
+    const modalHeader = document.createElement("h2");
+    modalHeader.textContent = "IP Checker Results";
+    applyStyles(modalHeader, {
+      textAlign: "left",
+      color: "#333333",
+      fontSize: "2em",
+      marginBottom: "25px",
+      borderBottom: "1px solid #eeeeee",
+      paddingBottom: "15px",
+    });
+
+    const loader = document.createElement("div");
+    loader.id = "modalLoader";
+    loader.textContent = "Loading data...";
+    applyStyles(loader, {
+      textAlign: "center",
+      padding: "30px",
+      fontSize: "1.2em",
+      color: "#666666",
+      fontStyle: "italic",
+    });
+
+    const tableContainer = document.createElement("div");
+    applyStyles(tableContainer, {
+      overflowX: "auto",
+    });
+
+    const table = document.createElement("table");
+    table.id = "SysTrans";
+    applyStyles(table, {
+      width: "100%",
+      borderCollapse: "separate",
+      borderSpacing: "0",
+      marginTop: "25px",
+      boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+      borderRadius: "8px",
+      overflow: "hidden",
+    });
+
+    modalContent.appendChild(closeBtn);
+    modalContent.appendChild(modalHeader);
+    modalContent.appendChild(loader);
+    modalContent.appendChild(tableContainer);
+    tableContainer.appendChild(table);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    if (!document.getElementById("modalAnimationsStyle")) {
+      const styleTag = document.createElement("style");
+      styleTag.id = "modalAnimationsStyle";
+      styleTag.textContent = `
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes slideInTop {
+                from { transform: translateY(-50px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+            .close-button:hover {
+                color: #333333 !important;
+                text-decoration: none;
+            }
+        `;
+      document.head.appendChild(styleTag);
+    }
+
+    // Add event listener for clicking outside the modal content
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        // If the click target is the modal background itself
+        closeModal();
+      }
+    });
+
+    // Add event listener for Escape key press
+    const handleEscapeKey = (event) => {
+      if (event.key === "Escape" || event.keyCode === 27) {
+        // event.key is more modern
+        closeModal();
+      }
+    };
+    document.addEventListener("keydown", handleEscapeKey);
+
+    modal.style.display = "block";
+    document.body.style.overflow = "hidden";
+
+    // String.prototype.replaceAt polyfill (if not globally available)
+    if (!String.prototype.replaceAt) {
+      String.prototype.replaceAt = function (index, replacement) {
+        return (
+          this.substring(0, index) +
+          replacement +
+          this.substring(index + replacement.length)
+        );
+      };
+    }
+
+    try {
+      const usermyidElement = document.querySelector(
+        "body > main > div.content-wrapper > div.user-info > div.user > span"
+      );
+      if (!usermyidElement) {
+        throw new Error("User ID element not found at the specified DOM path.");
+      }
+      const usermyid = usermyidElement.innerHTML;
+
+      const response = await fetch(
+        "https://bo2.inplaynet.com/api/Customer/FilterNormalizedIps?UserProfileId=" +
+          usermyid +
+          "&FilterDuplicates=true&PageSize=100&CurrentPage=1"
+      );
+      const list = await response.json();
+
+      const tbody = document.createElement("tbody");
+      table.appendChild(tbody);
+
+      const headerRow = document.createElement("tr");
+      const headers = [
+        "User ID",
+        "User Name",
+        "IP",
+        "Group",
+        "Agent",
+        "NGR",
+        "Last Use",
+      ];
+      headers.forEach((text, index) => {
+        const th = document.createElement("th");
+        th.textContent = text;
+        applyStyles(th, {
+          padding: "12px 15px",
+          textAlign: "left",
+          borderBottom: "1px solid #eeeeee",
+          backgroundColor: "#f7f7f7",
+          color: "#555555",
+          fontWeight: "bold",
+          textTransform: "uppercase",
+          fontSize: "0.9em",
+          letterSpacing: "0.5px",
+        });
+        if (index === 0) {
+          th.style.borderTopLeftRadius = "8px";
+        }
+        if (index === headers.length - 1) {
+          th.style.borderTopRightRadius = "8px";
+        }
+        headerRow.appendChild(th);
+      });
+      tbody.appendChild(headerRow);
+
+      const columnStyles = [
+        { width: "10%", minWidth: "80px" },
+        { width: "12%", minWidth: "100px" },
+        { width: "12%", minWidth: "120px" },
+        { width: "10%", minWidth: "80px" },
+        { width: "35%", minWidth: "250px", wordBreak: "break-word" },
+        { width: "8%", minWidth: "60px" },
+        { width: "13%", minWidth: "130px" },
+      ];
+
+      Array.from(headerRow.children).forEach((th, index) => {
+        applyStyles(th, columnStyles[index]);
+      });
+
+      if (list.length === 0) {
+        const noDataRow = document.createElement("tr");
+        const noDataCell = document.createElement("td");
+        noDataCell.textContent = "No duplicate IPs found.";
+        noDataCell.colSpan = 7;
+        applyStyles(noDataCell, {
+          textAlign: "center",
+          padding: "20px",
+          color: "#888",
+          fontStyle: "italic",
+        });
+        noDataRow.appendChild(noDataCell);
+        tbody.appendChild(noDataRow);
+        loader.style.display = "none";
+        return;
+      }
+
+      const calcthisp = list.length;
+      for (let i = 0; i < list.length; i++) {
+        if (list[i].othersCount > 0) {
+          const saveip = list[i].ip;
+          const savedevice = list[i].userAgent;
+
+          const responsef = await fetch(
+            "https://bo2.inplaynet.com/api/Customer/FilterDuplicateIpUsers?userProfileId=" +
+              usermyid +
+              "&ipAddress=" +
+              saveip +
+              "&currentPage=1&pageSize=100"
+          );
+          const listf = await responsef.json();
+
+          for (let g = 0; g < listf.length; g++) {
+            if (savedevice === listf[g].userAgent) {
+              let nadate = listf[g].lastUseDate.replaceAt(10, " ");
+
+              const grpname =
+                listf[g].groups === null ? "No Group" : listf[g].groups;
+
+              const dataRow = document.createElement("tr");
+              if ((i + g) % 2 === 0) {
+                applyStyles(dataRow, { backgroundColor: "#fdfdfd" });
+              }
+              dataRow.onmouseover = () =>
+                applyStyles(dataRow, {
+                  backgroundColor: "#f0f8ff",
+                  transition: "background-color 0.2s ease",
+                });
+              dataRow.onmouseout = () =>
+                applyStyles(dataRow, {
+                  backgroundColor:
+                    (i + g) % 2 === 0 ? "#fdfdfd" : "transparent",
+                  transition: "background-color 0.2s ease",
+                });
+
+              const userIdCell = document.createElement("td");
+              const userIdLink = document.createElement("a");
+              userIdLink.href = `https://bo2.inplaynet.com/html/users/userpage.html?cid=${listf[g].userProfileId}#dashboard`;
+              userIdLink.target = "_blank";
+              userIdLink.textContent = listf[g].userProfileId;
+              applyStyles(userIdLink, {
+                color: "#007bff",
+                textDecoration: "none",
+                transition: "color 0.2s ease",
+              });
+              userIdLink.onmouseover = () =>
+                (userIdLink.style.color = "#0056b3");
+              userIdLink.onmouseout = () =>
+                (userIdLink.style.color = "#007bff");
+              userIdCell.appendChild(userIdLink);
+              dataRow.appendChild(userIdCell);
+
+              const userNameCell = document.createElement("td");
+              userNameCell.textContent = listf[g].userName;
+              dataRow.appendChild(userNameCell);
+
+              const ipCell = document.createElement("td");
+              ipCell.textContent = listf[g].ip;
+              dataRow.appendChild(ipCell);
+
+              const groupCell = document.createElement("td");
+              groupCell.textContent = grpname;
+              dataRow.appendChild(groupCell);
+
+              const agentCell = document.createElement("td");
+              agentCell.textContent = listf[g].userAgent;
+              dataRow.appendChild(agentCell);
+
+              const ngrCell = document.createElement("td");
+              ngrCell.textContent = listf[g].ngrBrandAmount;
+              dataRow.appendChild(ngrCell);
+
+              const lastUseCell = document.createElement("td");
+              lastUseCell.textContent = nadate;
+              dataRow.appendChild(lastUseCell);
+
+              Array.from(dataRow.children).forEach((td, idx) => {
+                applyStyles(td, {
+                  padding: "12px 15px",
+                  textAlign: "left",
+                  borderBottom: "1px solid #eeeeee",
+                });
+                if (columnStyles[idx]) {
+                  applyStyles(td, columnStyles[idx]);
+                }
+              });
+
+              tbody.appendChild(dataRow);
+            }
+          }
+        }
+        const tempload = i + 1;
+        loader.textContent = `Loaded ${tempload} of ${calcthisp}`;
+        if (tempload === calcthisp) {
+          loader.style.display = "none";
+        }
+      }
+    } catch (error) {
+      console.error("Error in ipchecker:", error);
+      loader.textContent = "Error loading data. Please try again.";
+      loader.style.color = "red";
+    }
+  }
   async function handleKeyPress(event) {
     if (functionalityChecker()) {
       const currentAdmin = document.querySelector(
@@ -609,8 +1080,13 @@
       console.log(currentAdmin);
       const loader = showLoader();
       const currentUserID = selectUserID();
-      if (event.shiftKey && event.keyCode === 48 && currentUserID) {
-        alert("Diddler");
+      if (event.shiftKey && event.keyCode === 49 && currentUserID) {
+        console.log("Diddler");
+        ipchecker();
+      } else if (event.shiftKey && event.keyCode === 48 && currentUserID) {
+        CopyCards();
+      } else if (event.keyCode === 192 && currentUserID) {
+        loadmode();
       } else if (event.shiftKey && event.keyCode === 57) {
         // Shift + 9 for minigames calculator
         const transactions = await fetchTransactionsForCurrentShift(
@@ -1370,5 +1846,466 @@
       }
     }
   })();
+  async function getBrander() {
+    try {
+      const brandElement = document.querySelector(".user > .brand");
+      if (!brandElement || !brandElement.textContent) {
+        console.warn(
+          "Brand element '.user > .brand' not found or has no text content."
+        );
+        return null;
+      }
+      const userBrandName = brandElement.textContent.toLowerCase();
+
+      const response = await fetch(
+        "https://bo2.inplaynet.com/api/profile/GetProfile"
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data && data.brands && Array.isArray(data.brands)) {
+        for (const brand of data.brands) {
+          if (
+            brand.brandName &&
+            brand.brandName.toLowerCase() === userBrandName
+          ) {
+            return brand.brandID;
+          }
+        }
+      }
+
+      console.warn(`Brand ID not found for brand name: ${userBrandName}`);
+      return null;
+    } catch (error) {
+      console.error("Error in getBrander function:", error);
+      return null;
+    }
+  }
+
+  async function loadmode() {
+    function applyStyles(element, styles) {
+      for (const property in styles) {
+        element.style[property] = styles[property];
+      }
+    }
+
+    const modal = document.createElement("div");
+    modal.id = "transactionModal";
+    applyStyles(modal, {
+      display: "none",
+      position: "fixed",
+      zIndex: "1000",
+      left: "0",
+      top: "0",
+      width: "100%",
+      height: "100%",
+      overflow: "auto",
+      backgroundColor: "rgba(0,0,0,0.6)",
+      paddingTop: "60px",
+      animation: "fadeIn 0.3s ease-out",
+    });
+
+    const modalContent = document.createElement("div");
+    applyStyles(modalContent, {
+      backgroundColor: "#ffffff",
+      margin: "5% auto",
+      padding: "30px",
+      borderRadius: "8px",
+      boxShadow: "0 10px 30px rgba(0,0,0,0.25), 0 6px 10px rgba(0,0,0,0.1)",
+      width: "90%",
+      maxWidth: "1300px",
+      animation: "slideInTop 0.4s ease-out",
+    });
+
+    const closeBtn = document.createElement("span");
+    closeBtn.innerHTML = "&times;";
+    closeBtn.className = "close-button";
+    applyStyles(closeBtn, {
+      color: "#aaaaaa",
+      float: "right",
+      fontSize: "32px",
+      fontWeight: "bold",
+      cursor: "pointer",
+      transition: "color 0.3s ease",
+    });
+
+    // Define the closeModal function
+    const closeModal = () => {
+      modal.style.display = "none";
+      document.body.style.overflow = ""; // Restore scrolling
+      modal.remove(); // Remove the modal from the DOM
+      document.removeEventListener("keydown", handleEscapeKey); // Clean up Escape key listener
+    };
+
+    closeBtn.onclick = closeModal; // Assign closeModal to the close button
+    closeBtn.onmouseover = () => (closeBtn.style.color = "#333333");
+    closeBtn.onmouseout = () => (closeBtn.style.color = "#aaaaaa");
+
+    const modalHeader = document.createElement("h2");
+    modalHeader.textContent = "System Transactions";
+    applyStyles(modalHeader, {
+      textAlign: "left",
+      color: "#333333",
+      fontSize: "2em",
+      marginBottom: "25px",
+      borderBottom: "1px solid #eeeeee",
+      paddingBottom: "15px",
+    });
+
+    const loader = document.createElement("div");
+    loader.id = "modalLoader";
+    loader.textContent = "Loading transactions...";
+    applyStyles(loader, {
+      textAlign: "center",
+      padding: "30px",
+      fontSize: "1.2em",
+      color: "#666666",
+      fontStyle: "italic",
+    });
+
+    const tableContainer = document.createElement("div");
+    applyStyles(tableContainer, {
+      overflowX: "auto",
+    });
+
+    const table = document.createElement("table");
+    table.id = "SysTransTable";
+    applyStyles(table, {
+      width: "100%",
+      borderCollapse: "separate",
+      borderSpacing: "0",
+      marginTop: "25px",
+      boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+      borderRadius: "8px",
+      overflow: "hidden",
+    });
+
+    modalContent.appendChild(closeBtn);
+    modalContent.appendChild(modalHeader);
+    modalContent.appendChild(loader);
+    modalContent.appendChild(tableContainer);
+    tableContainer.appendChild(table);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    if (!document.getElementById("modalAnimationsStyle")) {
+      const styleTag = document.createElement("style");
+      styleTag.id = "modalAnimationsStyle";
+      styleTag.textContent = `
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes slideInTop {
+                from { transform: translateY(-50px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+            .close-button:hover {
+                color: #333333 !important;
+                text-decoration: none;
+            }
+        `;
+      document.head.appendChild(styleTag);
+    }
+
+    // Add event listener for clicking outside the modal content
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        // Check if the click occurred directly on the modal background
+        closeModal();
+      }
+    });
+
+    // Define the Escape key handler
+    const handleEscapeKey = (event) => {
+      if (event.key === "Escape" || event.keyCode === 27) {
+        // event.key is more modern, keyCode for wider compatibility
+        closeModal();
+      }
+    };
+    // Add event listener for Escape key press
+    document.addEventListener("keydown", handleEscapeKey);
+
+    modal.style.display = "block";
+    document.body.style.overflow = "hidden";
+
+    try {
+      const usermyidElement = document.querySelector(
+        "body > main > div.content-wrapper > div.user-info > div.user > span"
+      );
+      if (!usermyidElement) {
+        throw new Error("User ID element not found at the specified DOM path.");
+      }
+      const usermyid = usermyidElement.innerHTML;
+
+      const branderValue = await getBrander();
+      if (branderValue === null) {
+        loader.textContent =
+          "Error: Could not retrieve brand ID. Ensure an element with class '.user > .brand' exists and has text content.";
+        loader.style.color = "red";
+        return;
+      }
+
+      function toString(num, digits) {
+        return num.toString().padStart(digits, "0");
+      }
+
+      function formatDate(inputDate) {
+        if (!inputDate) return "";
+        const date = new Date(inputDate);
+        if (isNaN(date.getTime())) return inputDate;
+
+        const formattedDate =
+          toString(date.getDate(), 2) +
+          "-" +
+          toString(date.getMonth() + 1, 2) +
+          "-" +
+          toString(date.getFullYear(), 4) +
+          " " +
+          toString(date.getHours(), 2) +
+          ":" +
+          toString(date.getMinutes(), 2) +
+          ":" +
+          toString(date.getSeconds(), 2) +
+          ":" +
+          toString(date.getMilliseconds(), 3);
+        return formattedDate;
+      }
+
+      const response = await fetch(
+        "https://bo2.inplaynet.com/api/Customer/GetSystemTransaction?" +
+          `CurrentPage=1&PageSize=500&OrderColumn=transactionId&OrderDirection=desc&OperationType=2&UserProfileId=${usermyid}&BrandId=${branderValue}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const list = await response.json();
+
+      if (!list || list.length === 0) {
+        const tbody = document.createElement("tbody");
+        table.appendChild(tbody);
+        const noDataRow = document.createElement("tr");
+        const noDataCell = document.createElement("td");
+        noDataCell.textContent = "No system transactions found.";
+        noDataCell.colSpan = 9;
+        applyStyles(noDataCell, {
+          textAlign: "center",
+          padding: "20px",
+          color: "#888",
+          fontStyle: "italic",
+        });
+        noDataRow.appendChild(noDataCell);
+        tbody.appendChild(noDataRow);
+        loader.style.display = "none";
+        return;
+      }
+
+      const propertiesToRemove = [
+        "transactionStatus",
+        "operationType",
+        "userProfileId",
+        "startBalance",
+        "endBalance",
+        "paymentProvider",
+        "paymentChannel",
+        "brandAccountingAmount",
+        "systemAccountingAmount",
+        "localAmount",
+        "remoteAmount",
+        "initialAmount",
+        "localCurrency",
+        "remoteCurrency",
+        "adminId",
+        "adminName",
+        "requiresManualConfirmation",
+        "remoteTransactionId",
+        "transactinoStateId",
+        "customerPromoId",
+        "brandId",
+        "paymentMode",
+        "baseTransactionId",
+        "brandPaymentConfigId",
+        "traderId",
+        "lockedByTrader",
+        "isFirstDeposit",
+        "bonusTemplateId",
+        "wagerItemId",
+        "shopId",
+        "withdrawCode",
+        "adminControlPassed",
+        "completedInWebShop",
+        "confirmDate",
+        "transactionGuid",
+        "withoutBonus",
+        "userName",
+        "transactionRefundStatus",
+        "userGroups",
+        "firstName",
+        "lastName",
+        "brandName",
+        "paymentStatus",
+        "brandCurrency",
+        "operationTypeId",
+        "operationTypeName",
+        "direction",
+        "isGameOperation",
+        "adminComment_AdminName",
+        "transactionComment_AdminComment",
+        "brandAmountDecimal",
+        "systemAmountDecimal",
+        "startBalanceDecimal",
+        "endBalanceDecimal",
+        "localCurrencyCode",
+        "countryName",
+        "paymentStatusAdminId",
+        "paymentStatusAdminName",
+        "setReadyAdminId",
+        "setReadyDateTime",
+        "setReadyAdminName",
+        "count",
+        "requestDate",
+        "actionDate",
+        "amount",
+        "currency",
+      ];
+
+      list.forEach((item) => {
+        item.startDate = formatDate(item.startDate);
+        item.endDate = formatDate(item.endDate);
+
+        propertiesToRemove.forEach((prop) => {
+          delete item[prop];
+        });
+      });
+
+      const displayedColumns = [
+        "transactionId",
+        "startDate",
+        "endDate",
+        "adminUserName",
+        "transactionComment",
+        "transactionComment_UserName",
+        "localAmountDecimal",
+        "paymentProviderName",
+        "transactionStatusName",
+      ];
+
+      const headerMap = {
+        transactionId: "Transaction ID",
+        startDate: "Start Date",
+        endDate: "End Date",
+        adminUserName: "Admin User",
+        transactionComment: "Comment",
+        transactionComment_UserName: "Comment User",
+        localAmountDecimal: "Amount (Local)",
+        paymentProviderName: "Payment Provider",
+        transactionStatusName: "Status",
+      };
+
+      const columnStyles = [
+        { width: "8%", minWidth: "80px" },
+        { width: "12%", minWidth: "130px" },
+        { width: "12%", minWidth: "130px" },
+        { width: "10%", minWidth: "100px" },
+        { width: "15%", minWidth: "150px", wordBreak: "break-word" },
+        { width: "10%", minWidth: "100px" },
+        { width: "8%", minWidth: "80px" },
+        { width: "10%", minWidth: "100px" },
+        { width: "8%", minWidth: "80px" },
+      ];
+
+      const thead = document.createElement("thead");
+      const headerRow = document.createElement("tr");
+      table.appendChild(thead);
+      thead.appendChild(headerRow);
+
+      displayedColumns.forEach((colKey, index) => {
+        const th = document.createElement("th");
+        th.textContent = headerMap[colKey] || colKey;
+        applyStyles(th, {
+          padding: "12px 15px",
+          textAlign: "left",
+          borderBottom: "1px solid #eeeeee",
+          backgroundColor: "#f7f7f7",
+          color: "#555555",
+          fontWeight: "bold",
+          textTransform: "uppercase",
+          fontSize: "0.9em",
+          letterSpacing: "0.5px",
+        });
+        if (index === 0) {
+          th.style.borderTopLeftRadius = "8px";
+        }
+        if (index === displayedColumns.length - 1) {
+          th.style.borderTopRightRadius = "8px";
+        }
+        if (columnStyles[index]) {
+          applyStyles(th, columnStyles[index]);
+        }
+        headerRow.appendChild(th);
+      });
+
+      const tbody = document.createElement("tbody");
+      table.appendChild(tbody);
+
+      list.forEach((item, rowIndex) => {
+        const trow = document.createElement("tr");
+        if (rowIndex % 2 === 0) {
+          applyStyles(trow, { backgroundColor: "#fdfdfd" });
+        }
+        trow.onmouseover = () =>
+          applyStyles(trow, {
+            backgroundColor: "#f0f8ff",
+            transition: "background-color 0.2s ease",
+          });
+        trow.onmouseout = () =>
+          applyStyles(trow, {
+            backgroundColor: rowIndex % 2 === 0 ? "#fdfdfd" : "transparent",
+            transition: "background-color 0.2s ease",
+          });
+
+        displayedColumns.forEach((colKey, colIndex) => {
+          const cell = trow.insertCell(-1);
+          let cellValue =
+            item[colKey] !== undefined && item[colKey] !== null
+              ? item[colKey]
+              : "";
+
+          if (colKey === "transactionStatusName") {
+            if (cellValue === "Success") {
+              cell.style.color = "#0ad00a";
+            } else if (cellValue === "Rejected") {
+              cell.style.color = "#ff0000";
+            } else if (cellValue === "Processing") {
+              cell.style.color = "#ffb733";
+            }
+          }
+          cell.innerHTML = cellValue;
+
+          applyStyles(cell, {
+            padding: "12px 15px",
+            textAlign: "left",
+            borderBottom: "1px solid #eeeeee",
+          });
+          if (columnStyles[colIndex]) {
+            applyStyles(cell, columnStyles[colIndex]);
+          }
+        });
+        tbody.appendChild(trow);
+      });
+
+      loader.style.display = "none";
+    } catch (error) {
+      console.error("Error in loadmode:", error);
+      loader.textContent = `Error loading data: ${error.message}`;
+      loader.style.color = "red";
+    }
+  }
   document.addEventListener("keydown", handleKeyPress);
 })();
