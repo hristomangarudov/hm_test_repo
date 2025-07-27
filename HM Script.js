@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HM Script2
 // @namespace    http://tampermonkey.net/HM-script2
-// @version      3.3.5
+// @version      3.3.6
 // @description  script made for filtering unique user IP matches also has minigames calculator. Shift + 0 is IP command, while Shift + 9 is for the minigames calc
 // @author       Hristo Mangarudov
 // @match        https://bo2.inplaynet.com/*
@@ -28,6 +28,58 @@
           'div.content > div.actions > div.btn.accept[text_key="ACCEPT"]'
         )
       : "";
+    const excelEl = document.querySelector(
+      "section.collapsible.customer-requests.withdraw-requests > h3"
+    )
+      ? document.querySelector(
+          "section.collapsible.customer-requests.withdraw-requests > h3"
+        )
+      : "";
+    console.log(excelEl);
+    if (excelEl) {
+      let hidEl = document.createElement("div");
+      hidEl.addEventListener("click", function name(params) {
+        let annoyingLoader = document.querySelector(
+          "section.collapsible.customer-requests.withdraw-requests > div.loader"
+        )
+          ? document.querySelector(
+              "section.collapsible.customer-requests.withdraw-requests > div.loader"
+            )
+          : "";
+        let transac = document.querySelector(
+          "section.collapsible.customer-requests.withdraw-requests > div.grid-wrapper"
+        )
+          ? document.querySelector(
+              "section.collapsible.customer-requests.withdraw-requests > div.grid-wrapper"
+            )
+          : "";
+        if (annoyingLoader && transac) {
+          let loadStyle = document.createElement("style");
+          loadStyle.innerHTML = `
+.hide-loader-forcefully {
+  display: none !important;
+}
+.show-transac-forcefully {
+  display: inline-grid !important;
+}
+`;
+          document.head.appendChild(loadStyle);
+          annoyingLoader.classList.add("hide-loader-forcefully");
+          transac.classList.add("show-transac-forcefully");
+          console.log("tasda");
+          console.log(annoyingLoader);
+          console.log(transac);
+        }
+      });
+      hidEl.style.width = "20px";
+      hidEl.style.height = "20px";
+      //hidEl.style.background = "red"
+      hidEl.style.display = "inline-grid";
+      hidEl.style.margin = "auto 15px";
+      event.preventDefault();
+      excelEl.append(hidEl);
+    }
+
     if (acceptWithdrawAcceptBtn) {
       acceptWithdrawAcceptBtn.style.position = "relative";
       acceptWithdrawAcceptBtn.style.zIndex = "2";
