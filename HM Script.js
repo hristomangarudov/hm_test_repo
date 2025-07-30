@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HM Script2
 // @namespace    http://tampermonkey.net/HM-script2
-// @version      3.3.6
+// @version      3.3.7
 // @description  script made for filtering unique user IP matches also has minigames calculator. Shift + 0 is IP command, while Shift + 9 is for the minigames calc
 // @author       Hristo Mangarudov
 // @match        https://bo2.inplaynet.com/*
@@ -38,6 +38,11 @@
     console.log(excelEl);
     if (excelEl) {
       let hidEl = document.createElement("div");
+      let excelBtn = document.querySelector(
+      "section.collapsible.customer-requests.withdraw-requests > h3 > div.export-to-excel"
+    ) ? document.querySelector(
+      "section.collapsible.customer-requests.withdraw-requests > h3 > div.export-to-excel"
+    ): ''
       hidEl.addEventListener("click", function name(params) {
         let annoyingLoader = document.querySelector(
           "section.collapsible.customer-requests.withdraw-requests > div.loader"
@@ -76,6 +81,10 @@
       //hidEl.style.background = "red"
       hidEl.style.display = "inline-grid";
       hidEl.style.margin = "auto 15px";
+      if(!excelBtn){
+          hidEl.style.marginLeft = 'auto'
+      }
+      hidEl.innerHTML = '-'
       event.preventDefault();
       excelEl.append(hidEl);
     }
