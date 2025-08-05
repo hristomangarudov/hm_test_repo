@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HM Script2
 // @namespace    http://tampermonkey.net/HM-script2
-// @version      3.3.7
+// @version      3.3.8
 // @description  script made for filtering unique user IP matches also has minigames calculator. Shift + 0 is IP command, while Shift + 9 is for the minigames calc
 // @author       Hristo Mangarudov
 // @match        https://bo2.inplaynet.com/*
@@ -21,6 +21,26 @@
   /* global EventEmitter */
   (function () {
     console.log("Diddler");
+    let isSportClicked = false;
+    window.addEventListener(
+      "hashchange",
+      () => {
+        if (location.hash === "#sport" && !isSportClicked) {
+          let el = document.querySelector(
+            "section.user-sportsbook > div.collapsible.user-sportsbook-report> div.title-wrapper"
+          )
+            ? document.querySelector(
+                "section.user-sportsbook > div.collapsible.user-sportsbook-report> div.title-wrapper"
+              )
+            : null;
+          if (el) {
+            el.click();
+            isSportClicked = true;
+          }
+        }
+      },
+      false
+    );
     const acceptWithdrawAcceptBtn = document.querySelector(
       'div.content > div.actions > div.btn.accept[text_key="ACCEPT"]'
     )
@@ -39,10 +59,12 @@
     if (excelEl) {
       let hidEl = document.createElement("div");
       let excelBtn = document.querySelector(
-      "section.collapsible.customer-requests.withdraw-requests > h3 > div.export-to-excel"
-    ) ? document.querySelector(
-      "section.collapsible.customer-requests.withdraw-requests > h3 > div.export-to-excel"
-    ): ''
+        "section.collapsible.customer-requests.withdraw-requests > h3 > div.export-to-excel"
+      )
+        ? document.querySelector(
+            "section.collapsible.customer-requests.withdraw-requests > h3 > div.export-to-excel"
+          )
+        : "";
       hidEl.addEventListener("click", function name(params) {
         let annoyingLoader = document.querySelector(
           "section.collapsible.customer-requests.withdraw-requests > div.loader"
@@ -81,10 +103,10 @@
       //hidEl.style.background = "red"
       hidEl.style.display = "inline-grid";
       hidEl.style.margin = "auto 15px";
-      if(!excelBtn){
-          hidEl.style.marginLeft = 'auto'
+      if (!excelBtn) {
+        hidEl.style.marginLeft = "auto";
       }
-      hidEl.innerHTML = '-'
+      hidEl.innerHTML = "-";
       event.preventDefault();
       excelEl.append(hidEl);
     }
