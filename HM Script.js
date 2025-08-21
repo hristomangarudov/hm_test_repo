@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HM Script2
 // @namespace    http://tampermonkey.net/HM-script2
-// @version      3.3.8
+// @version      3.3.9
 // @description  script made for filtering unique user IP matches also has minigames calculator. Shift + 0 is IP command, while Shift + 9 is for the minigames calc
 // @author       Hristo Mangarudov
 // @match        https://bo2.inplaynet.com/*
@@ -828,36 +828,117 @@
     };
     document.addEventListener("click", closeModal);
   }
-  async function CopyCards() {
-    console.log("coppied");
+  async function CopyCards(ev) {
     const currentDate = new Date();
-    var userdataid = document.querySelector(
+    const userEl = document.querySelector(
       "body > main > div.content-wrapper > div.user-info > div.user > span"
-    ).innerText;
-    const fssdatas = await fetch(
+    );
+    if (!userEl) return false;
+    const userdataid = userEl.innerText.trim();
+
+    const res = await fetch(
       "https://bo2.inplaynet.com/api/customer/GetCardPan?UserProfileId=" +
         userdataid
     );
-    const fssdata = await fssdatas.json();
-    const cards = fssdata
-      .filter((item) => item.cardStatus === 3)
-      .filter((item) => {
-        const createDateMax = new Date(item.createDateMax);
-        const sixMonthsAgo = new Date(currentDate);
-        sixMonthsAgo.setMonth(currentDate.getMonth() - 6);
-        return createDateMax >= sixMonthsAgo;
-      })
-      .map((item) => item.cardPan);
-    const result = `All Used CreditCard Verification is Requested. ${cards.join(
-      ", "
-    )}`;
-    var input = document.createElement("textarea");
-    input.innerHTML = result;
-    document.body.appendChild(input);
-    input.select();
-    var fresult = document.execCommand("copy");
-    document.body.removeChild(input);
-    return fresult;
+    const fssdata = await res.json();
+
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const validCards = (Array.isArray(fssdata) ? fssdata : []).filter(
+      (item) => {
+        if (!item || item.cardStatus !== 3) return false;
+        const dt = new Date(item.createDateMax);
+        if (Number.isNaN(dt.getTime())) return false;
+        return dt >= sixMonthsAgo;
+      }
+    );
+
+    if (!validCards.length) return false;
+
+    const x = ev?.pageX ?? window.innerWidth / 2;
+    const y = ev?.pageY ?? window.innerHeight / 2;
+
+    const existing = document.getElementById("cardModal");
+    if (existing) existing.remove();
+
+    const cardModal = document.createElement("div");
+    cardModal.id = "cardModal";
+    Object.assign(cardModal.style, {
+      position: "absolute",
+      top: y + 10 + "px",
+      left: x + 10 + "px",
+      background: "#fff",
+      border: "1px solid #ccc",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0,0,0,.15)",
+      padding: "10px",
+      zIndex: "99999",
+      display: "flex",
+      flexDirection: "column",
+      gap: "8px",
+      fontFamily: "system-ui, sans-serif",
+      fontSize: "14px",
+    });
+
+    function maskPan(pan) {
+      const s = String(pan || "");
+      if (s.length <= 8) return s;
+      return s.slice(0, 6) + "X".repeat(s.length - 8) + s.slice(-2);
+    }
+
+    function makeBtn(label, formatter) {
+      const btn = document.createElement("button");
+      const preview = formatter(validCards[0].cardPan);
+      btn.textContent = `${label} (e.g. ${preview})`;
+      Object.assign(btn.style, {
+        padding: "8px 16px",
+        border: "none",
+        borderRadius: "4px",
+        background: "#28a745",
+        color: "#fff",
+        fontWeight: "bold",
+        cursor: "pointer",
+        textAlign: "center",
+      });
+      btn.onmouseenter = () => (btn.style.background = "#218838");
+      btn.onmouseleave = () => (btn.style.background = "#28a745");
+      btn.onclick = async () => {
+        const text =
+          validCards.map((c) => formatter(String(c.cardPan))).join(", ") +
+          " requested";
+        try {
+          if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            ta.remove();
+          }
+        } finally {
+          cardModal.remove();
+          document.removeEventListener("click", outsideHandler);
+        }
+      };
+      return btn;
+    }
+
+    cardModal.appendChild(makeBtn("Last Two", maskPan));
+    cardModal.appendChild(makeBtn("Last Four", (p) => p));
+    document.body.appendChild(cardModal);
+
+    function outsideHandler(e) {
+      if (!cardModal.contains(e.target)) {
+        cardModal.remove();
+        document.removeEventListener("click", outsideHandler);
+      }
+    }
+    setTimeout(() => document.addEventListener("click", outsideHandler), 0);
+
+    return true;
   }
   async function ipchecker() {
     function applyStyles(element, styles) {
