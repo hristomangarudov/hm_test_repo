@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HM Script2
 // @namespace    http://tampermonkey.net/HM-script2
-// @version      3.3.9
+// @version      3.4.0
 // @description  script made for filtering unique user IP matches also has minigames calculator. Shift + 0 is IP command, while Shift + 9 is for the minigames calc
 // @author       Hristo Mangarudov
 // @match        https://bo2.inplaynet.com/*
@@ -1985,6 +1985,76 @@
             const zenoImg = document.createElement("img");
             zenoImg.src =
               "https://img.rankedboost.com/wp-content/uploads/2019/05/WoW-Classic-Warlock-Guide.png";
+            zenoImg.style.width = "50px";
+            zenoImg.style.height = "50px";
+            const fraudSpan = document.querySelector(
+              "div.desktop-header-full-name> div.name"
+            );
+            const firstFraudSpanChild = fraudSpan.childNodes[0];
+            if (firstFraudSpanChild) {
+              fraudSpan.insertBefore(zenoImg, firstFraudSpanChild);
+              firstFraudSpanChild.style.display = "none";
+            }
+
+            const secondChild = container.childNodes[1];
+            if (secondChild) {
+              container.insertBefore(img, secondChild);
+            }
+          } else {
+            console.error(`Container not found: ${containerSelector}`);
+          }
+        } else if (currentFraudAgent.children[1].textContent === "FraudGDO") {
+          if (container) {
+            const img = document.createElement("img");
+            img.src = "https://i.imgur.com/ETRCd7n.png";
+            img.alt = "Decorative Image";
+            img.style.width = "85%";
+            img.style.maxHeight = "20em";
+            img.style.display = "block";
+            img.style.margin = "10px auto";
+
+            img.style.position = "relative";
+            img.style.border = "4px solid transparent";
+            img.style.animation = "border-anim 4s linear infinite";
+
+            const style = document.createElement("style");
+
+            document.head.appendChild(style);
+            const backgroundEl1 = document.querySelector(
+              "nav.sidebar> div.content-wrapper"
+            );
+            const backgroundEl2 = document.querySelector(
+              "nav.sidebar> div.content-wrapper > a.logo-url"
+            );
+            const backgroundEl3 = document.querySelector("header");
+            backgroundEl1.style.backgroundImage =
+              "linear-gradient(to right, rgb(191, 165, 201), rgb(120, 140, 100))";
+            backgroundEl2.style.backgroundImage =
+              "linear-gradient(to right, rgb(191, 165, 201), rgb(120, 140, 100))";
+            backgroundEl3.style.backgroundImage =
+              "linear-gradient(271deg, rgb(191, 165, 201), rgb(120, 140, 100))";
+            backgroundEl3.style.color = "black";
+            backgroundEl3.querySelectorAll("*").forEach((child) => {
+              child.style.color = "black";
+            });
+            const backgroundEl4 = document.querySelector(
+              "main >div.content-wrapper"
+            );
+
+            backgroundEl4.style.background =
+              "url(https://i.imgur.com/bOGQzkH.jpeg)";
+            backgroundEl4.style.backgroundSize = "cover";
+            backgroundEl4.style.backgroundPosition = "center";
+
+            const brandsSelect = document.querySelector(
+              "header>div.search-brand"
+            );
+            brandsSelect.style.color = "#5f5f5f";
+            brandsSelect.querySelectorAll("*").forEach((child) => {
+              child.style.color = "#5f5f5f";
+            });
+            const zenoImg = document.createElement("img");
+            zenoImg.src = "https://i.imgur.com/YvyhyEh.png";
             zenoImg.style.width = "50px";
             zenoImg.style.height = "50px";
             const fraudSpan = document.querySelector(
